@@ -1,0 +1,14 @@
+name: Background Queue Worker
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping-worker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Vercel Queue Processor
+        run: |
+          curl -s -X POST "https://${{ secrets.VERCEL_PROJECT_DOMAIN }}/api/cron/process-queue"             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"             -H "Content-Type: application/json"
