@@ -35,6 +35,9 @@ create table if not exists public.tasks (
 
 create index if not exists tasks_status_due_idx on public.tasks (status, due_date);
 
+-- Manual ordering of tasks linked to a meeting (drag to reorder).
+alter table public.tasks add column if not exists sort_order integer;
+
 create table if not exists public.notes (
   id uuid default gen_random_uuid() primary key,
   title text not null default 'Untitled',

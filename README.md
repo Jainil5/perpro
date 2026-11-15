@@ -16,7 +16,7 @@ Personal productivity app for a developer / AI startup founder: quick capture, t
 - **Tasks** (`/tasks`) — priority, due dates, tags, search, all/open/done filters.
 - **Meetings** (`/meetings`) — agenda + notes; AI extracts action items straight into linked tasks.
 - **Notes** (`/notes`) — markdown with preview, tags, pinning, AI summarize and action-item extraction.
-- **AI News** (`/news`) — server-side RSS aggregation from OpenAI, Google DeepMind, Hugging Face, TechCrunch AI, The Verge AI, Ars Technica AI, and Hacker News. Cached + deduped in Supabase, auto-refreshes when older than 1 hour, filter by source, star or save items to notes.
+- **News** (`/news`) — two categories. **AI News**: server-side RSS aggregation from OpenAI, Google DeepMind, Hugging Face, TechCrunch AI, The Verge AI, Ars Technica AI, and Hacker News; cached + deduped in Supabase, auto-refreshes when older than 1 hour, filter by source, star or save items to notes. **Football**: opens seeded with the UCL top 10 (PSG, Barcelona, Real Madrid, Liverpool, Man City, Arsenal, Bayern, Inter, Dortmund, Atlético); follow/unfollow any club via search, see upcoming fixtures grouped by day and recent results with scores, via the free TheSportsDB API (`/api/football`, 5-minute server cache). Followed teams persist in the browser's localStorage.
 
 ## AI assist
 

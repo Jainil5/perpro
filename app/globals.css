@@ -1,13 +1,130 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   color-scheme: dark;
+
+  /* Color Token System — Perpro Design Plan */
+  --bg-deep: #0A0B0F;
+  --bg-surface: #11131A;
+  --bg-elevated: #181B23;
+  --fg-primary: #E8EAF0;
+  --fg-muted: #6B7280;
+  --fg-subtle: #3D4451;
+  --accent-brand: #6366F1;
+  --accent-brand-hover: #818CF8;
+  --accent-warn: #F59E0B;
+  --accent-critical: #EF4444;
+  --accent-success: #22C55E;
+  --accent-ai: #A855F7;
+
+  /* Type Scale — Perpro Design Plan */
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --text-display: clamp(2.5rem, 4vw, 3.5rem);   /* 40-56px */
+  --text-h1: 1.5rem;     /* 24px */
+  --text-h2: 1.25rem;    /* 20px */
+  --text-h3: 1rem;       /* 16px */
+  --text-body: 0.875rem; /* 14px */
+  --text-sm: 0.75rem;    /* 12px */
+  --text-xs: 0.625rem;   /* 10px */
+
+  --leading-tight: 1.1;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.05em;
 }
 
 body {
-  @apply bg-zinc-950 text-zinc-100 antialiased;
+  @apply bg-[var(--bg-deep)] text-[var(--fg-primary)] antialiased;
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  line-height: var(--leading-normal);
+}
+
+/* Type utilities */
+.text-display {
+  font-family: var(--font-display);
+  font-size: var(--text-display);
+  font-weight: 700;
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+}
+.text-h1 {
+  font-family: var(--font-display);
+  font-size: var(--text-h1);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+}
+.text-h2 {
+  font-family: var(--font-display);
+  font-size: var(--text-h2);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+}
+.text-h3 {
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  font-weight: 600;
+  line-height: var(--leading-normal);
+  letter-spacing: var(--tracking-normal);
+}
+.text-subheading {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: var(--leading-normal);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+.text-body {
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  font-weight: 400;
+  line-height: var(--leading-normal);
+  letter-spacing: var(--tracking-normal);
+}
+.text-body-sm {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  line-height: var(--leading-normal);
+  letter-spacing: var(--tracking-normal);
+}
+.text-mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 400;
+  line-height: var(--leading-normal);
+  letter-spacing: var(--tracking-normal);
+}
+.text-mono-sm {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  line-height: var(--leading-normal);
+  letter-spacing: var(--tracking-normal);
+}
+
+input,
+textarea,
+select {
+  @apply rounded-lg border border-[var(--fg-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--fg-primary)] placeholder-[var(--fg-muted)] outline-none transition;
+  @apply focus:border-[var(--accent-brand)] focus:ring-1 focus:ring-[var(--accent-brand)];
+}
+
+textarea {
+  @apply resize-y;
 }
 
 ::-webkit-scrollbar {
@@ -15,33 +132,23 @@ body {
   height: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  @apply rounded bg-zinc-700;
+  @apply rounded bg-[var(--fg-subtle)];
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 
-input,
-textarea,
-select {
-  @apply rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 outline-none transition focus:border-indigo-500;
-}
-
-textarea {
-  @apply resize-y;
-}
-
 .markdown-body {
-  @apply text-sm leading-relaxed text-zinc-300;
+  @apply text-sm leading-relaxed text-[var(--fg-muted)];
 }
 .markdown-body h1 {
-  @apply mb-2 mt-4 text-lg font-bold text-zinc-100;
+  @apply mb-2 mt-4 text-lg font-bold text-[var(--fg-primary)];
 }
 .markdown-body h2 {
-  @apply mb-2 mt-4 text-base font-bold text-zinc-100;
+  @apply mb-2 mt-4 text-base font-bold text-[var(--fg-primary)];
 }
 .markdown-body h3 {
-  @apply mb-1 mt-3 text-sm font-semibold text-zinc-100;
+  @apply mb-1 mt-3 text-sm font-semibold text-[var(--fg-primary)];
 }
 .markdown-body p {
   @apply my-2;
@@ -53,24 +160,41 @@ textarea {
   @apply my-2 list-decimal space-y-1 pl-5;
 }
 .markdown-body a {
-  @apply text-indigo-400 underline;
+  @apply text-[var(--accent-brand)] underline;
 }
 .markdown-body code {
-  @apply rounded bg-zinc-800 px-1 py-0.5 text-xs text-amber-300;
+  @apply rounded bg-[var(--bg-elevated)] px-1 py-0.5 text-xs text-[var(--accent-warn)];
 }
 .markdown-body pre {
-  @apply my-2 overflow-x-auto rounded-lg bg-zinc-900 p-3;
+  @apply my-2 overflow-x-auto rounded-lg bg-[var(--bg-surface)] p-3;
 }
 .markdown-body pre code {
-  @apply bg-transparent p-0 text-zinc-300;
+  @apply bg-transparent p-0 text-[var(--fg-muted)];
 }
 .markdown-body blockquote {
-  @apply my-2 border-l-2 border-indigo-500 pl-3 text-zinc-400;
+  @apply my-2 border-l-2 border-[var(--accent-brand)] pl-3 text-[var(--fg-muted)];
 }
 .markdown-body table {
   @apply my-2 w-full border-collapse text-xs;
 }
 .markdown-body th,
 .markdown-body td {
-  @apply border border-zinc-700 px-2 py-1 text-left;
+  @apply border border-[var(--fg-subtle)] px-2 py-1 text-left;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Focus visible styles */
+:focus-visible {
+  @apply outline-none ring-2 ring-[var(--accent-brand)] ring-offset-2 ring-offset-[var(--bg-deep)];
 }

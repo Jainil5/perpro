@@ -15,6 +15,7 @@ export interface Task {
   due_date: string | null;
   tags: string[];
   meeting_id: string | null;
+  sort_order: number | null;
   created_at: string;
   completed_at: string | null;
 }
@@ -50,4 +51,25 @@ export interface NewsItem {
   published_at: string | null;
   fetched_at: string;
   saved: boolean;
+}
+
+export interface FootballTeam {
+  id: string;
+  name: string;
+  league: string;
+  badge: string | null;
+  short?: string | null;
+}
+
+export interface FootballMatch {
+  id: string;
+  timestamp: string;
+  league: string;
+  round: string | null;
+  home: { id: string; name: string; badge: string | null };
+  away: { id: string; name: string; badge: string | null };
+  homeScore: number | null;
+  awayScore: number | null;
+  venue: string | null;
+  url: string;
 }

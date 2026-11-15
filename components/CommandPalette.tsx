@@ -9,7 +9,7 @@ const COMMANDS = [
   { label: 'Go to Tasks', href: '/tasks' },
   { label: 'Go to Meetings', href: '/meetings' },
   { label: 'Go to Notes', href: '/notes' },
-  { label: 'Go to AI News', href: '/news' },
+  { label: 'Go to News', href: '/news' },
   { label: 'New task', href: '/tasks?new=1' },
   { label: 'New meeting', href: '/meetings?new=1' },
   { label: 'New note', href: '/notes?new=1' },

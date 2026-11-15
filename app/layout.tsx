@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import Shell from '@/components/Shell';
+import MotionProvider from '@/components/MotionProvider';
 
 export const metadata: Metadata = {
   title: 'PerPro — Founder Command Center',
@@ -17,7 +18,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <Shell>{children}</Shell>
+        <MotionProvider>
+          <Shell>{children}</Shell>
+        </MotionProvider>
       </body>
     </html>
   );

@@ -11,7 +11,7 @@ const NAV = [
   { href: '/tasks', label: 'Tasks', icon: 'M9 11l3 3 8-8M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11' },
   { href: '/meetings', label: 'Meetings', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
   { href: '/notes', label: 'Notes', icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.4-9.6a2 2 0 112.8 2.8L11.8 15.8 8 17l1.2-3.8 9.4-9.8z' },
-  { href: '/news', label: 'AI News', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
+  { href: '/news', label: 'News', icon: 'M4 5h13v14H6a2 2 0 01-2-2V5zM17 8h3v9a2 2 0 01-2 2M7 8h7M7 12h7M7 16h4' },
 ];
 
 function Icon({ d, className }: { d: string; className?: string }) {

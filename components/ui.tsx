@@ -1,6 +1,7 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useId } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export function Button({
   children,
@@ -8,29 +9,50 @@ export function Button({
   variant = 'primary',
   type = 'button',
   disabled,
+  loading,
   className = '',
 }: {
   children: ReactNode;
   onClick?: () => void;
-  variant?: 'primary' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'ai';
   type?: 'button' | 'submit';
   disabled?: boolean;
+  loading?: boolean;
   className?: string;
 }) {
   const styles = {
-    primary: 'bg-indigo-600 text-white hover:bg-indigo-500',
-    ghost: 'border border-zinc-700 text-zinc-300 hover:bg-zinc-800',
-    danger: 'border border-red-900 text-red-400 hover:bg-red-950',
+    primary: 'bg-[var(--accent-brand)] text-white hover:bg-[var(--accent-brand-hover)]',
+    secondary: 'bg-[var(--bg-elevated)] text-[var(--fg-primary)] border border-[var(--fg-subtle)] hover:bg-[var(--fg-subtle)]',
+    ghost: 'border border-[var(--fg-subtle)] text-[var(--fg-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--fg-primary)]',
+    danger: 'border border-[var(--accent-critical)] bg-[var(--accent-critical)]/10 text-[var(--accent-critical)] hover:bg-[var(--accent-critical)]/20',
+    ai: 'bg-[var(--accent-ai)] text-white hover:bg-[var(--accent-ai)]/90',
   };
+
+  const isDisabled = disabled || loading;
+
   return (
-    <button
+    <motion.button
       type={type}
       onClick={onClick}
-      disabled={disabled}
+      disabled={isDisabled}
+      whileTap={{ scale: 0.97 }}
+      whileHover={!isDisabled ? { scale: 1.02 } : undefined}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
       className={`inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-4 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${styles[variant]} ${className}`}
+      style={loading ? { width: 'var(--button-width, auto)' } : undefined}
     >
-      {children}
-    </button>
+      {loading && (
+        <motion.span
+          animate={{ rotate: 360 }}
+          transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+          className="h-4 w-4 rounded-full border-2 border-current border-t-transparent"
+          aria-hidden="true"
+        />
+      )}
+      <span>{children}</span>
+    </motion.button>
   );
 }
 
@@ -38,85 +60,196 @@ export function Modal({
   title,
   onClose,
   children,
-  wide,
+  size = 'default',
 }: {
   title: string;
   onClose: () => void;
   children: ReactNode;
-  wide?: boolean;
+  size?: 'default' | 'wide' | 'full';
 }) {
+  const sizeClasses = {
+    default: 'sm:max-w-md',
+    wide: 'sm:max-w-2xl',
+    full: 'sm:max-w-4xl',
+  };
+
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
-      <div
-        className={`max-h-[90vh] w-full overflow-y-auto rounded-t-2xl border border-zinc-700 bg-zinc-900 p-5 shadow-2xl sm:rounded-2xl ${wide ? 'sm:max-w-2xl' : 'sm:max-w-md'}`}
-        onClick={(e) => e.stopPropagation()}
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        className="fixed inset-0 z-40 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-4"
+        onClick={onClose}
       >
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold">{title}</h2>
-          <button onClick={onClose} aria-label="Close" className="flex h-11 w-11 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200">
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
+        <motion.div
+          initial={{ opacity: 0, y: 30, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 30, scale: 0.96 }}
+          transition={{ duration: 0.3, type: 'spring', stiffness: 400, damping: 30 }}
+          className={`max-h-[90vh] w-full overflow-y-auto rounded-2xl border border-[var(--fg-subtle)] bg-[var(--bg-surface)] p-5 shadow-2xl ${sizeClasses[size]}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-base font-semibold text-[var(--fg-primary)]">{title}</h2>
+            <motion.button
+              onClick={onClose}
+              aria-label="Close"
+              whileTap={{ scale: 0.9 }}
+              whileHover={{ scale: 1.1 }}
+              className="flex h-11 w-11 items-center justify-center rounded-lg text-[var(--fg-muted)] hover:bg-[var(--bg-elevated)] hover:text-[var(--fg-primary)]"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+            </motion.button>
+          </div>
+          {children}
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 }
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label className="block">
-      <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-zinc-500">{label}</span>
+    <motion.label
+      initial={{ opacity: 0, y: -5 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+      className="block"
+    >
+      <span className="mb-1 block text-subheading text-[var(--fg-muted)]">{label}</span>
       {children}
-    </label>
+    </motion.label>
   );
 }
 
 export function EmptyState({ title, hint }: { title: string; hint?: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-zinc-800 px-6 py-10 text-center">
-      <p className="text-sm text-zinc-400">{title}</p>
-      {hint && <p className="mt-1 text-xs text-zinc-600">{hint}</p>}
-    </div>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+      className="rounded-xl border border-dashed border-[var(--fg-subtle)] px-6 py-10 text-center"
+    >
+      <p className="text-body text-[var(--fg-muted)]">{title}</p>
+      {hint && <p className="mt-1 text-body-sm text-[var(--fg-subtle)]">{hint}</p>}
+    </motion.div>
   );
 }
 
 export function ErrorBanner({ message }: { message: string }) {
   return (
-    <div className="mb-4 rounded-lg border border-red-900 bg-red-950/50 px-4 py-3 text-sm text-red-300">
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
+      className="mb-4 rounded-lg border border-[var(--accent-critical)] bg-[var(--accent-critical)]/10 px-4 py-3 text-body text-[var(--accent-critical)]"
+    >
       {message}
       {message.includes('does not exist') || message.includes('schema cache') ? (
-        <span className="mt-1 block text-xs text-red-400/80">
+        <span className="mt-1 block text-body-sm text-[var(--accent-critical)]/80">
           Run supabase/schema.sql in the Supabase SQL Editor first.
         </span>
       ) : null}
-    </div>
+    </motion.div>
   );
 }
 
-export function Spinner({ label }: { label?: string }) {
+export function Spinner({ label, variant = 'default' }: { label?: string; variant?: 'default' | 'ai' }) {
+  const variants = {
+    default: 'border-zinc-600 border-t-[var(--accent-brand)]',
+    ai: 'border-[var(--fg-subtle)] border-t-[var(--accent-ai)]',
+  };
+
   return (
-    <div className="flex items-center gap-2 py-8 text-sm text-zinc-500">
-      <span className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-600 border-t-indigo-500" />
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="flex items-center gap-2 py-8 text-sm text-[var(--fg-muted)]"
+    >
+      <motion.span
+        animate={{ rotate: 360 }}
+        transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+        className={`h-4 w-4 rounded-full border-2 ${variants[variant]}`}
+      />
       {label ?? 'Loading…'}
-    </div>
+    </motion.div>
   );
 }
 
-export function PageHeader({ title, sub, action }: { title: string; sub?: string; action?: ReactNode }) {
+export function PageHeader({ title, sub, action, count }: { title: string; sub?: ReactNode; action?: ReactNode; count?: number }) {
   return (
-    <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+    <motion.div
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
+      className="mb-6 flex flex-wrap items-center justify-between gap-3"
+    >
       <div>
-        <h1 className="text-xl font-bold tracking-tight">{title}</h1>
-        {sub && <p className="mt-0.5 text-sm text-zinc-500">{sub}</p>}
+        <motion.h1
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+          className="text-h1"
+        >
+          {title}
+        </motion.h1>
+        {sub && (
+          <motion.p
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, delay: 0.15 }}
+            className="mt-0.5 text-body-sm text-[var(--fg-muted)]"
+          >
+            {sub}
+          </motion.p>
+        )}
+        {typeof count === 'number' && (
+          <motion.span
+            key={count}
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.5 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            className="ml-2 inline-flex h-5 items-center rounded-full bg-[var(--accent-brand)]/20 px-2 text-[10px] font-medium text-[var(--accent-brand)]"
+          >
+            {count}
+          </motion.span>
+        )}
       </div>
       {action}
-    </div>
+    </motion.div>
   );
 }
 
-export function Tag({ children }: { children: ReactNode }) {
+export function Tag({ children, delay = 0 }: { children: ReactNode; delay?: number }) {
   return (
-    <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[11px] text-zinc-400">{children}</span>
+    <motion.span
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.2, delay }}
+      whileHover={{ scale: 1.05 }}
+      className="rounded bg-[var(--bg-elevated)] px-1.5 py-0.5 text-[11px] text-[var(--fg-muted)]"
+    >
+      {children}
+    </motion.span>
+  );
+}
+
+export function ProgressRing({ size = 16 }: { size?: number }) {
+  return (
+    <motion.svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      animate={{ rotate: 360 }}
+      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity={0.25} strokeWidth={3} />
+      <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth={3} strokeLinecap="round" />
+    </motion.svg>
   );
 }
