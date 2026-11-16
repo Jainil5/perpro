@@ -1,3 +1,5 @@
+import { isDemoMode } from './supabase-server';
+
 const TIMEOUT_MS = 30_000;
 
 interface Provider {
@@ -25,6 +27,7 @@ function providers(): Provider[] {
 }
 
 export async function chat(system: string, user: string): Promise<string> {
+  if (isDemoMode()) return offlineCompletion(system, user);
   const errors: string[] = [];
   for (const p of providers()) {
     try {
@@ -57,6 +60,11 @@ export async function chat(system: string, user: string): Promise<string> {
 }
 
 export async function* chatStream(system: string, user: string): AsyncGenerator<string> {
+  if (isDemoMode()) {
+    const text = offlineCompletion(system, user);
+    for (let i = 0; i < text.length; i += 24) yield text.slice(i, i + 24);
+    return;
+  }
   const errors: string[] = [];
   for (const p of providers()) {
     let yielded = false;
@@ -151,4 +159,40 @@ export function partialActionItems(raw: string): string[] {
     }
   }
   return items;
+}
+
+// --- Offline responses for DEMO_MODE -------------------------------------
+
+const ACTION_VERB =
+  /^(send|ship|fix|review|book|pull|write|prepare|ask|follow|schedule|call|email|update|decide|migrate|add|ping|draft|order|confirm|deploy|test|hire|interview|circulate|set up|roll out|close|negotiate|verify)\b/i;
+
+function units(text: string): string[] {
+  return text
+    .split(/\r?\n/)
+    .flatMap((line) => line.replace(/^\s*[-*•\d.)\]]+\s*/, '').match(/[^.!?]+[.!?]*/g) ?? [])
+    .map((u) => u.trim())
+    .filter((u) => u.length > 3);
+}
+
+function offlineActionItems(text: string): string[] {
+  const found = units(text).filter((u) => ACTION_VERB.test(u)).slice(0, 6);
+  const items = found.length
+    ? found
+    : units(text).filter((u) => /\b(need to|have to|must|should|todo|action)\b/i.test(u)).slice(0, 6);
+  return items.map((u) => u.replace(/\s+/g, ' ').slice(0, 90));
+}
+
+function offlineSummary(text: string): string {
+  const all = units(text);
+  const picked = all.length <= 5
+    ? all
+    : [...all].sort((a, b) => b.length - a.length).slice(0, 5).sort((a, b) => all.indexOf(a) - all.indexOf(b));
+  const bullets = picked.map((u) => `- ${u.replace(/\s+/g, ' ').slice(0, 160)}`);
+  return bullets.join('\n') || '- Nothing to summarize yet.';
+}
+
+function offlineCompletion(system: string, user: string): string {
+  if (system === ACTIONS_SYSTEM) return JSON.stringify(offlineActionItems(user));
+  if (system === SUMMARIZE_SYSTEM) return offlineSummary(user);
+  return offlineSummary(user);
 }

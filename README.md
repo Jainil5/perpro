@@ -8,6 +8,15 @@ Personal productivity app for a developer / AI startup founder: quick capture, t
 2. **Env** — `.env.local` already has the Supabase keys and AI provider config.
 3. **Run** — `npm install && npm run dev` (use `-p 3002` if 3000 is taken).
 
+### Demo mode (no credentials needed)
+
+Set `DEMO_MODE=1` in `.env.local` to run the whole app against an in-memory seed:
+tasks, inbox, meetings, notes and news items are pre-filled, and the AI summarize /
+action-item buttons return deterministic offline text instead of calling a provider.
+Data resets when the server restarts. Live RSS refresh (`POST /api/news`) and the
+football fixtures still use the network. Remove the flag to go back to Supabase + a real
+AI provider.
+
 ## Features
 
 - **Today** (`/`) — overdue + due-today tasks, next meeting, inbox preview, pinned notes, quick-capture bar.
