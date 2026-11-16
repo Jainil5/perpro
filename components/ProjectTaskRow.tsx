@@ -26,12 +26,15 @@ export default function ProjectTaskRow({
   task,
   onToggle,
   onEdit,
+  onCopyPrompt,
 }: {
   task: ProjectTask;
   onToggle: (task: ProjectTask) => void;
   onEdit: (task: ProjectTask) => void;
+  onCopyPrompt: (task: ProjectTask) => Promise<boolean>;
 }) {
   const [openNotes, setOpenNotes] = useState(false);
+  const [copied, setCopied] = useState(false);
   const colors = PRIORITY_COLORS[task.priority] ?? PRIORITY_COLORS.medium;
   const due = dueTone(task.due_date, task.completed);
 
@@ -82,6 +85,40 @@ export default function ProjectTaskRow({
             )}
             {task.source === 'import' && <span className="text-[11px] text-[var(--fg-subtle)]">imported</span>}
           </span>
+        </motion.button>
+
+        <motion.button
+          onClick={async () => {
+            if (await onCopyPrompt(task)) {
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1800);
+            }
+          }}
+          whileTap={{ scale: 0.9 }}
+          title="Copy an implementation brief for this task"
+          aria-label={`Copy implement prompt for ${task.title}`}
+          className={`mt-0.5 flex h-11 shrink-0 items-center justify-center gap-1 rounded-lg px-2 text-[11px] ${
+            copied
+              ? 'bg-[var(--accent-success)]/15 text-[var(--accent-success)]'
+              : 'text-[var(--fg-subtle)] hover:bg-[var(--bg-elevated)] hover:text-[var(--fg-primary)]'
+          }`}
+        >
+          {copied ? (
+            <>
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 13l4 4L19 7" />
+              </svg>
+              Copied
+            </>
+          ) : (
+            <>
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 4h6a1 1 0 011 1v1H8V5a1 1 0 011-1zM8 6H6a2 2 0 00-2 2v11a2 2 0 002 2h9a2 2 0 002-2v-2" />
+                <path d="M13 10h7v7a2 2 0 01-2 2h-5" />
+              </svg>
+              Prompt
+            </>
+          )}
         </motion.button>
 
         {task.notes && (

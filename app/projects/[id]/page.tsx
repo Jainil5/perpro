@@ -5,9 +5,11 @@ import { useParams, useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import ImportTasksModal from '@/components/ImportTasksModal';
+import { copyText } from '@/lib/clipboard';
 import ProjectFormModal from '@/components/ProjectFormModal';
 import ProjectTaskRow from '@/components/ProjectTaskRow';
 import { Button, EmptyState, ErrorBanner, Field, Modal, PageHeader, Spinner } from '@/components/ui';
+import { implementPrompt } from '@/lib/task-prompt';
 import { Priority, Project, ProjectMilestone, ProjectTask } from '@/lib/types';
 import { todayISO, useTable } from '@/lib/useTable';
 import {
@@ -65,6 +67,8 @@ export default function ProjectDetailPage() {
   const [milestoneForm, setMilestoneForm] = useState(EMPTY_MILESTONE);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [promptCopied, setPromptCopied] = useState(false);
+  const [promptFallback, setPromptFallback] = useState<string | null>(null);
 
   const today = todayISO();
   const project = projects.rows.find((p) => p.id === projectId);
@@ -81,6 +85,30 @@ export default function ProjectDetailPage() {
   const categories = categoryNames(tasks);
   const nextMilestone = milestones.find((m) => !m.completed && m.date !== null);
 
+  /** Everything an agent needs to implement one task without being re-briefed. */
+  function promptFor(task: ProjectTask): string {
+    if (!project) return '';
+    return implementPrompt(task, {
+      project,
+      stats,
+      related: tasks.filter((t) => (t.category ?? '') === (task.category ?? '')),
+      nextMilestone: nextMilestone ? { title: nextMilestone.title, date: nextMilestone.date } : null,
+      today,
+    });
+  }
+
+  async function copyPrompt(task: ProjectTask): Promise<boolean> {
+    const text = promptFor(task);
+    if (await copyText(text)) {
+      setPromptCopied(true);
+      setTimeout(() => setPromptCopied(false), 1800);
+      return true;
+    }
+    // Clipboard can be blocked by the browser; hand them the text to copy manually.
+    setPromptFallback(text);
+    return false;
+  }
+
   const visible = sortTasks(
     tasks
       .filter((t) => (filter === 'all' ? true : filter === 'done' ? t.completed : !t.completed))
@@ -96,6 +124,7 @@ export default function ProjectDetailPage() {
   function openNewTask() {
     setForm(EMPTY_TASK);
     setFormError(null);
+    setPromptCopied(false);
     setTaskModal('new');
   }
 
@@ -109,6 +138,7 @@ export default function ProjectDetailPage() {
       completed: task.completed,
     });
     setFormError(null);
+    setPromptCopied(false);
     setTaskModal(task);
   }
 
@@ -355,7 +385,7 @@ export default function ProjectDetailPage() {
                   </div>
                   <div className="space-y-2">
                     {group.map((task) => (
-                      <ProjectTaskRow key={task.id} task={task} onToggle={toggleTask} onEdit={openEditTask} />
+                      <ProjectTaskRow key={task.id} task={task} onToggle={toggleTask} onEdit={openEditTask} onCopyPrompt={copyPrompt} />
                     ))}
                   </div>
                 </div>
@@ -365,7 +395,7 @@ export default function ProjectDetailPage() {
             <div className="space-y-2">
               <AnimatePresence initial={false}>
                 {visible.map((task) => (
-                  <ProjectTaskRow key={task.id} task={task} onToggle={toggleTask} onEdit={openEditTask} />
+                  <ProjectTaskRow key={task.id} task={task} onToggle={toggleTask} onEdit={openEditTask} onCopyPrompt={copyPrompt} />
                 ))}
               </AnimatePresence>
             </div>
@@ -459,8 +489,11 @@ export default function ProjectDetailPage() {
 
           <div className="rounded-xl border border-dashed border-[var(--fg-subtle)] p-4">
             <p className="text-body-sm text-[var(--fg-muted)]">
-              Importing from an agent? Open <span className="text-[var(--fg-primary)]">Import JSON</span>, copy the
-              format prompt, and paste whatever comes back. New ids are generated on import and duplicates are skipped.
+              <span className="text-[var(--fg-primary)]">Prompt</span> on any task row copies a full brief — project
+              context, the task, its whole notes block, sibling tasks and the milestone it serves — ready to paste into
+              an agent. Ask for follow-ups back as JSON and use{" "}
+              <span className="text-[var(--fg-primary)]">Import JSON</span> to file them; new ids are generated and
+              duplicates are skipped.
             </p>
           </div>
         </aside>
@@ -542,11 +575,19 @@ export default function ProjectDetailPage() {
 
             {formError && <ErrorBanner message={formError} />}
 
-            <div className="flex justify-between gap-2 border-t border-[var(--fg-subtle)] pt-4">
+            <div className="flex flex-wrap justify-between gap-2 border-t border-[var(--fg-subtle)] pt-4">
               {taskModal !== 'new' ? (
-                <Button variant="danger" onClick={deleteTask} disabled={saving}>
-                  Delete
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="ghost"
+                    onClick={() => copyPrompt(taskModal)}
+                  >
+                    {promptCopied ? 'Copied brief' : 'Copy implement prompt'}
+                  </Button>
+                  <Button variant="danger" onClick={deleteTask} disabled={saving}>
+                    Delete
+                  </Button>
+                </div>
               ) : (
                 <span />
               )}
@@ -555,6 +596,26 @@ export default function ProjectDetailPage() {
               </Button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {promptFallback !== null && (
+        <Modal title="Copy the brief" onClose={() => setPromptFallback(null)} size="wide">
+          <p className="mb-2 text-body-sm text-[var(--fg-muted)]">
+            Clipboard access was refused, so here it is to copy by hand — everything is already selected.
+          </p>
+          <textarea
+            readOnly
+            value={promptFallback}
+            rows={18}
+            onFocus={(e) => e.target.select()}
+            className="w-full font-mono text-xs leading-relaxed"
+          />
+          <div className="mt-3 flex justify-end">
+            <Button variant="secondary" onClick={() => setPromptFallback(null)}>
+              Close
+            </Button>
+          </div>
         </Modal>
       )}
 

@@ -24,7 +24,9 @@ AI provider.
 - **Today** (`/`) — overdue + due-today tasks, next meeting, inbox preview, pinned notes, quick-capture bar.
 - **Cmd+K palette** — capture any thought to the Inbox from anywhere, or jump to any page / create new items.
 - **Inbox** (`/inbox`) — triage captures into tasks, notes, or meetings; dismiss the rest.
-- **Projects** (`/projects`) — one card per project with completion, overdue count and next due date; click through for the project workspace. `/projects/[id]` holds tasks (grouped by category, filterable by status/category, sortable by due date/priority/category/added), a **Schedule** panel of dated milestones with late/in-N-days markers, a per-category progress breakdown, and stats for progress, open, overdue and the next milestone. Add tasks by hand or **Import JSON**.
+- **Projects** (`/projects`) — one card per project with completion, overdue count and next due date; click through for the project workspace. `/projects/[id]` holds tasks (grouped by category, filterable by status/category, sortable by due date/priority/category/added), a **Schedule** panel of dated milestones with late/in-N-days markers, a per-category progress breakdown, and stats for progress, open, overdue and the next milestone. Add tasks by hand or **Import JSON**. Every task row has a **Prompt** button that copies a
+complete implementation brief for it — project context, the task, its full notes, sibling
+tasks and the milestone it serves — ready to paste into any coding agent.
 - **Tasks** (`/tasks`) — priority, due dates, tags, search, all/open/done filters.
 - **Meetings** (`/meetings`) — agenda + notes; AI extracts action items straight into linked tasks.
 - **Notes** (`/notes`) — markdown with preview, tags, pinning, AI summarize and action-item extraction.
@@ -63,6 +65,12 @@ sending). The expected shape:
 
 The dialog has **Copy JSON format** and **Copy prompt for an agent** buttons — the second one
 gives an agent everything it needs to produce a payload this importer accepts.
+
+The per-task implementation brief (the **Prompt** button on a task row, or **Copy implement
+prompt** in the task dialog) closes the loop the other way: it asks the agent to answer with
+follow-up work in the import shape above, using brand-new titles so it lands as new tasks
+rather than colliding with the existing one. Built by `lib/task-prompt.ts`.
+Notes are copied verbatim and untruncated — they are the spec.
 
 Deleting a project (`DELETE /api/projects/[id]`) removes its tasks and milestones too.
 

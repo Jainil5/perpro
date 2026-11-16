@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button, ErrorBanner, Field, Modal } from './ui';
+import { copyText } from '@/lib/clipboard';
 import {
   IMPORT_EXAMPLE,
   IMPORT_FIELDS_HELP,
@@ -17,24 +18,6 @@ interface ImportSummary {
   rejected: string[];
   warnings: string[];
   categories: string[];
-}
-
-async function copyText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    // Sandbox/iframes and older mobile Safari fall back to the legacy path.
-    const el = document.createElement('textarea');
-    el.value = text;
-    el.setAttribute('readonly', '');
-    el.style.cssText = 'position:fixed;top:-1000px;opacity:0';
-    document.body.appendChild(el);
-    el.select();
-    const ok = document.execCommand('copy');
-    document.body.removeChild(el);
-    return ok;
-  }
 }
 
 function CopyButton({ text, label }: { text: string; label: string }) {

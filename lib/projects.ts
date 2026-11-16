@@ -1,4 +1,4 @@
-import { ProjectTask } from './types';
+import type { ProjectTask } from './types';
 
 export interface ProjectStats {
   total: number;
