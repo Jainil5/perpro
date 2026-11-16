@@ -61,6 +61,48 @@ create table if not exists public.news_items (
 
 create index if not exists news_items_published_idx on public.news_items (published_at desc);
 
+create table if not exists public.projects (
+  id uuid default gen_random_uuid() primary key,
+  name text not null,
+  description text,
+  status text not null default 'active' check (status in ('active','paused','done','archived')),
+  color text not null default '#6366F1',
+  start_date date,
+  target_date date,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.project_tasks (
+  id uuid default gen_random_uuid() primary key,
+  project_id uuid not null references public.projects(id) on delete cascade,
+  title text not null,
+  category text,
+  notes text,
+  priority text not null default 'medium' check (priority in ('low','medium','high','urgent')),
+  completed boolean not null default false,
+  completed_at timestamptz,
+  due_date date,
+  source text not null default 'manual' check (source in ('manual','import')),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists project_tasks_project_idx on public.project_tasks (project_id, completed, due_date);
+
+-- Schedule / milestones: dated checkpoints a project is judged against.
+create table if not exists public.project_milestones (
+  id uuid default gen_random_uuid() primary key,
+  project_id uuid not null references public.projects(id) on delete cascade,
+  title text not null,
+  date date,
+  notes text,
+  completed boolean not null default false,
+  completed_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists project_milestones_project_idx on public.project_milestones (project_id, date);
+
 -- RLS stays ENABLED (Supabase default). All app access goes through server
 -- routes using the secret key, which bypasses RLS; the browser never talks to
 -- Supabase directly. Add real policies before introducing auth.

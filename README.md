@@ -1,17 +1,19 @@
 # PerPro — Founder Command Center
 
-Personal productivity app for a developer / AI startup founder: quick capture, tasks, meetings, markdown notes with AI assist, and an aggregated AI news feed. Next.js 15 + Tailwind + Supabase.
+Personal productivity app for a developer / AI startup founder: quick capture, tasks, projects with JSON import, meetings, markdown notes with AI assist, and an aggregated AI news feed. Next.js 15 + Tailwind + Supabase.
 
 ## Setup
 
-1. **Database** — paste [`supabase/schema.sql`](supabase/schema.sql) into Supabase Dashboard → SQL Editor → Run. Creates `inbox`, `tasks`, `meetings`, `notes`, `news_items`. Safe to re-run.
+1. **Database** — paste [`supabase/schema.sql`](supabase/schema.sql) into Supabase Dashboard → SQL Editor → Run. Creates `inbox`, `tasks`, `meetings`, `notes`, `news_items`, plus `projects`,
+`project_tasks` and `project_milestones`. Safe to re-run.
 2. **Env** — `.env.local` already has the Supabase keys and AI provider config.
 3. **Run** — `npm install && npm run dev` (use `-p 3002` if 3000 is taken).
 
 ### Demo mode (no credentials needed)
 
 Set `DEMO_MODE=1` in `.env.local` to run the whole app against an in-memory seed:
-tasks, inbox, meetings, notes and news items are pre-filled, and the AI summarize /
+tasks, inbox, meetings, notes, news items, and three projects (OrderBook, Website
+Refresh, Investor Data Room) with tasks and milestones are pre-filled, and the AI summarize /
 action-item buttons return deterministic offline text instead of calling a provider.
 Data resets when the server restarts. Live RSS refresh (`POST /api/news`) and the
 football fixtures still use the network. Remove the flag to go back to Supabase + a real
@@ -22,10 +24,47 @@ AI provider.
 - **Today** (`/`) — overdue + due-today tasks, next meeting, inbox preview, pinned notes, quick-capture bar.
 - **Cmd+K palette** — capture any thought to the Inbox from anywhere, or jump to any page / create new items.
 - **Inbox** (`/inbox`) — triage captures into tasks, notes, or meetings; dismiss the rest.
+- **Projects** (`/projects`) — one card per project with completion, overdue count and next due date; click through for the project workspace. `/projects/[id]` holds tasks (grouped by category, filterable by status/category, sortable by due date/priority/category/added), a **Schedule** panel of dated milestones with late/in-N-days markers, a per-category progress breakdown, and stats for progress, open, overdue and the next milestone. Add tasks by hand or **Import JSON**.
 - **Tasks** (`/tasks`) — priority, due dates, tags, search, all/open/done filters.
 - **Meetings** (`/meetings`) — agenda + notes; AI extracts action items straight into linked tasks.
 - **Notes** (`/notes`) — markdown with preview, tags, pinning, AI summarize and action-item extraction.
 - **News** (`/news`) — two categories. **AI News**: server-side RSS aggregation from OpenAI, Google DeepMind, Hugging Face, TechCrunch AI, The Verge AI, Ars Technica AI, and Hacker News; cached + deduped in Supabase, auto-refreshes when older than 1 hour, filter by source, star or save items to notes. **Football**: opens seeded with the UCL top 10 (PSG, Barcelona, Real Madrid, Liverpool, Man City, Arsenal, Bayern, Inter, Dortmund, Atlético); follow/unfollow any club via search, see upcoming fixtures grouped by day and recent results with scores, via the free TheSportsDB API (`/api/football`, 5-minute server cache). Followed teams persist in the browser's localStorage.
+
+## Project task import
+
+`POST /api/projects/import` with `{ project_id, raw, allow_duplicates }` (the Import JSON
+dialog in the project view calls it, and validates the same payload client-side before
+sending). The expected shape:
+
+```json
+{
+  "tasks": [
+    {
+      "title": "OrderBook: Configure Supabase RLS & brand isolation policies",
+      "category": "Database & Security",
+      "notes": "Ensure brand_id is enforced across all tables using Row Level Security.",
+      "completed": false,
+      "priority": "High",
+      "due_date": "2026-11-03"
+    }
+  ]
+}
+```
+
+- `title` is required; everything else is optional.
+- `priority` is case-insensitive and understands `critical`/`asap` → urgent, `normal` → medium.
+- `completed` accepts a boolean, `done`, or `status: "done"` / `"open"`.
+- `due_date` accepts `YYYY-MM-DD` or a full timestamp.
+- `notes` can be long (capped at 20k characters) and may be an array — it is stringified.
+- Ids are always generated server-side, so the same JSON can be re-imported into another project.
+- Duplicate titles inside one payload, or already present in the project, are skipped unless
+  `allow_duplicates` is set.
+- A bare array of tasks works, as do markdown fences, prose around the JSON, and trailing commas.
+
+The dialog has **Copy JSON format** and **Copy prompt for an agent** buttons — the second one
+gives an agent everything it needs to produce a payload this importer accepts.
+
+Deleting a project (`DELETE /api/projects/[id]`) removes its tasks and milestones too.
 
 ## AI assist
 

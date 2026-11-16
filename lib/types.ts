@@ -53,6 +53,45 @@ export interface NewsItem {
   saved: boolean;
 }
 
+export type ProjectStatus = 'active' | 'paused' | 'done' | 'archived';
+
+export interface Project {
+  id: string;
+  name: string;
+  description: string | null;
+  status: ProjectStatus;
+  color: string;
+  start_date: string | null;
+  target_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProjectTask {
+  id: string;
+  project_id: string;
+  title: string;
+  category: string | null;
+  notes: string | null;
+  priority: Priority;
+  completed: boolean;
+  completed_at: string | null;
+  due_date: string | null;
+  source: 'manual' | 'import';
+  created_at: string;
+}
+
+export interface ProjectMilestone {
+  id: string;
+  project_id: string;
+  title: string;
+  date: string | null;
+  notes: string | null;
+  completed: boolean;
+  completed_at: string | null;
+  created_at: string;
+}
+
 export interface FootballTeam {
   id: string;
   name: string;

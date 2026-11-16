@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { serverClient } from '@/lib/supabase-server';
 
-const TABLES = ['inbox', 'tasks', 'meetings', 'notes', 'news_items'];
+const TABLES = [
+  'inbox',
+  'tasks',
+  'meetings',
+  'notes',
+  'news_items',
+  'projects',
+  'project_tasks',
+  'project_milestones',
+];
 
 type Ctx = { params: Promise<{ table: string }> };
 

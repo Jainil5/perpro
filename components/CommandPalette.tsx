@@ -6,10 +6,12 @@ import { useEffect, useRef, useState } from 'react';
 const COMMANDS = [
   { label: 'Go to Today', href: '/' },
   { label: 'Go to Inbox', href: '/inbox' },
+  { label: 'Go to Projects', href: '/projects' },
   { label: 'Go to Tasks', href: '/tasks' },
   { label: 'Go to Meetings', href: '/meetings' },
   { label: 'Go to Notes', href: '/notes' },
   { label: 'Go to News', href: '/news' },
+  { label: 'New project', href: '/projects?new=1' },
   { label: 'New task', href: '/tasks?new=1' },
   { label: 'New meeting', href: '/meetings?new=1' },
   { label: 'New note', href: '/notes?new=1' },

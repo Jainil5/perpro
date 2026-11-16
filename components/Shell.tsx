@@ -8,6 +8,7 @@ import CommandPalette from './CommandPalette';
 const NAV = [
   { href: '/', label: 'Today', icon: 'M12 3v2m0 14v2m9-9h-2M5 12H3m14.5-6.5L16 7m-8 10l-1.5 1.5m11 0L16 17M8 7L6.5 5.5M12 8a4 4 0 100 8 4 4 0 000-8z' },
   { href: '/inbox', label: 'Inbox', icon: 'M3 8l7.9 5.3a2 2 0 002.2 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
+  { href: '/projects', label: 'Projects', icon: 'M3 7l9-4 9 4-9 4-9-4zm0 5l9 4 9-4M3 17l9 4 9-4' },
   { href: '/tasks', label: 'Tasks', icon: 'M9 11l3 3 8-8M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11' },
   { href: '/meetings', label: 'Meetings', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
   { href: '/notes', label: 'Notes', icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.4-9.6a2 2 0 112.8 2.8L11.8 15.8 8 17l1.2-3.8 9.4-9.8z' },
