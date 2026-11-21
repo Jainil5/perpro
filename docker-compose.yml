@@ -1,0 +1,36 @@
+services:
+  api:
+    build: ./backend
+    image: myos-api
+    container_name: myos-api
+    environment:
+      MYOS_DATABASE_URL: sqlite:////data/myos.db
+      MYOS_DATA_DIR: /data
+      MYOS_WORKSPACE: default
+      MYOS_AI_ENABLED: "0"
+      MYOS_ALLOW_DEMO_RESET: "1"
+    volumes:
+      - myos-data:/data
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health',timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    image: myos-web
+    container_name: myos-web
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      MYOS_API_URL: http://api:8000
+      DEMO_MODE: "1"
+    ports:
+      - "3000:3000"
+
+volumes:
+  myos-data:

@@ -1,0 +1,27 @@
+# MyOS backend ignores. The repo root ignores `.env*` at any depth, so the last
+# two negations keep the committed template and the empty data directory visible.
+
+# local configuration (contains no secrets by default, but it is still local)
+.env
+.env.local
+
+# the SQLite database, its WAL sidecars and any export written into data/
+data/*
+!data/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# keep the template committed
+!.env.example

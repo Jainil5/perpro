@@ -11,6 +11,7 @@ const COMMANDS = [
   { label: 'Go to Meetings', href: '/meetings' },
   { label: 'Go to Notes', href: '/notes' },
   { label: 'Go to News', href: '/news' },
+  { label: 'Open MyOS (personal + business OS)', href: '/os' },
   { label: 'New project', href: '/projects?new=1' },
   { label: 'New task', href: '/tasks?new=1' },
   { label: 'New meeting', href: '/meetings?new=1' },

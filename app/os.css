@@ -1,0 +1,297 @@
+/* ============================================================================
+   MyOS design tokens — scoped to `.os-root` only.
+   app/globals.css (PerPro) is untouched: nothing here leaks outside `.os-root`,
+   and every rule below that needs to neutralise a global PerPro style is
+   written with an `.os-root` prefix so it wins on specificity.
+   Values are HSL channels so Tailwind can apply `/opacity` modifiers.
+
+   Theming contract: app/(os)/layout.tsx mounts <div class="os-root"> (dark) or
+   <div class="os-root os-light">, and os-bootstrap mirrors both classes onto
+   <html> before paint (no hydration flash). The token *declarations* live on
+   `html.os-root` only, so the wrapper always inherits the already-correct
+   palette instead of re-declaring a default dark one.
+   ==========================================================================*/
+
+html.os-root {
+  /* dark is the default; `.os-light` on the same element swaps the palette */
+  --os-background: 228 20% 7%;
+  --os-card: 228 17% 10%;
+  --os-elevated: 228 15% 14%;
+  --os-popover: 228 16% 12%;
+  --os-sidebar: 228 19% 9%;
+  --os-secondary: 228 14% 17%;
+  --os-muted: 228 14% 16%;
+  --os-accent: 228 13% 19%;
+
+  --os-foreground: 220 20% 93%;
+  --os-muted-foreground: 224 11% 63%;
+  --os-faint: 224 10% 46%;
+
+  --os-line: 227 13% 21%;
+  --os-line-strong: 227 13% 29%;
+  --os-input: 228 16% 12%;
+  --os-ring: 244 74% 67%;
+
+  --os-primary: 244 75% 61%;
+  --os-primary-foreground: 0 0% 100%;
+  --os-on-danger: 0 0% 100%;
+
+  --os-success: 152 58% 45%;
+  --os-warn: 38 92% 52%;
+  --os-danger: 2 76% 58%;
+  --os-info: 210 88% 60%;
+  --os-ai: 275 68% 62%;
+
+  --os-radius: 0.6rem;
+  --os-shadow: 0 1px 2px hsl(0 0% 0% / 0.32);
+  --os-shadow-lg: 0 16px 40px -12px hsl(0 0% 0% / 0.55);
+
+  --os-font-display: 'Space Grotesk', system-ui, sans-serif;
+  --os-font-body: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --os-font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  color-scheme: dark;
+}
+
+html.os-root.os-light {
+  --os-background: 220 24% 97%;
+  --os-card: 0 0% 100%;
+  --os-elevated: 220 22% 99%;
+  --os-popover: 0 0% 100%;
+  --os-sidebar: 0 0% 100%;
+  --os-secondary: 220 18% 94%;
+  --os-muted: 220 18% 95%;
+  --os-accent: 222 20% 93%;
+
+  --os-foreground: 224 28% 14%;
+  --os-muted-foreground: 224 12% 42%;
+  --os-faint: 224 10% 56%;
+
+  --os-line: 220 15% 88%;
+  --os-line-strong: 220 13% 78%;
+  --os-input: 0 0% 100%;
+  --os-ring: 244 68% 58%;
+
+  --os-primary: 244 68% 56%;
+  --os-primary-foreground: 0 0% 100%;
+  --os-on-danger: 0 0% 100%;
+
+  --os-success: 154 58% 36%;
+  --os-warn: 34 92% 42%;
+  --os-danger: 2 74% 52%;
+  --os-info: 210 84% 44%;
+  --os-ai: 275 62% 50%;
+
+  --os-shadow: 0 1px 2px hsl(224 30% 30% / 0.08);
+  --os-shadow-lg: 0 18px 40px -16px hsl(224 30% 30% / 0.28);
+
+  color-scheme: light;
+}
+
+/* ---- shell ---------------------------------------------------------------- */
+
+html.os-root {
+  background-color: hsl(var(--os-background));
+}
+
+.os-root {
+  font-family: var(--os-font-body);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: hsl(var(--os-foreground));
+  background-color: hsl(var(--os-background));
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.006em;
+}
+
+.os-root *,
+.os-root *::before,
+.os-root *::after {
+  border-color: hsl(var(--os-line));
+}
+
+.os-root h1,
+.os-root h2,
+.os-root h3 {
+  font-family: var(--os-font-display);
+  letter-spacing: -0.02em;
+  color: hsl(var(--os-foreground));
+}
+
+/* globals.css styles every bare input/textarea/select with PerPro's dark
+   palette; re-anchor them to the MyOS tokens so light mode is correct. */
+.os-root input,
+.os-root textarea,
+.os-root select {
+  background-color: hsl(var(--os-input));
+  border-color: hsl(var(--os-line));
+  color: hsl(var(--os-foreground));
+}
+
+.os-root input::placeholder,
+.os-root textarea::placeholder {
+  color: hsl(var(--os-faint));
+}
+
+/* globals.css sets a PerPro-coloured ring on every focus; re-anchor it. */
+.os-root :focus-visible {
+  --tw-ring-color: hsl(var(--os-ring));
+  --tw-ring-offset-color: hsl(var(--os-background));
+  outline: none;
+}
+
+.os-root ::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+.os-root ::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: hsl(var(--os-line-strong));
+}
+.os-root ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---- typography helpers --------------------------------------------------- */
+
+.os-eyebrow {
+  font-family: var(--os-font-display);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(var(--os-faint));
+}
+
+.os-title {
+  font-family: var(--os-font-display);
+  font-size: 1.375rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+/* monospace + tabular figures; the caller owns the size via a text-* utility */
+.os-mono {
+  font-family: var(--os-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.os-num {
+  font-family: var(--os-font-display);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* ---- motion --------------------------------------------------------------- */
+
+@keyframes os-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.os-enter {
+  animation: os-fade-up 0.22s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .os-enter {
+    animation: none;
+  }
+}
+
+/* ---- markdown (MyOS flavour of the shared .markdown-body) ----------------- */
+
+.os-root .markdown-body {
+  color: hsl(var(--os-foreground));
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+.os-root .markdown-body h1,
+.os-root .markdown-body h2,
+.os-root .markdown-body h3 {
+  color: hsl(var(--os-foreground));
+  margin-block: 1rem 0.5rem;
+}
+.os-root .markdown-body h1 {
+  font-size: 1.25rem;
+}
+.os-root .markdown-body h2 {
+  font-size: 1.0625rem;
+}
+.os-root .markdown-body h3 {
+  font-size: 0.9375rem;
+}
+.os-root .markdown-body a {
+  color: hsl(var(--os-primary));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.os-root .markdown-body code {
+  background: hsl(var(--os-muted));
+  color: hsl(var(--os-foreground));
+  border-radius: 0.3rem;
+}
+.os-root .markdown-body pre {
+  background: hsl(var(--os-muted));
+  border: 1px solid hsl(var(--os-line));
+}
+.os-root .markdown-body pre code {
+  background: transparent;
+  color: hsl(var(--os-muted-foreground));
+}
+.os-root .markdown-body blockquote {
+  border-left-color: hsl(var(--os-line-strong));
+  color: hsl(var(--os-muted-foreground));
+}
+.os-root .markdown-body th,
+.os-root .markdown-body td {
+  border-color: hsl(var(--os-line));
+}
+.os-root .markdown-body hr {
+  border-color: hsl(var(--os-line));
+}
+.os-root .markdown-body ul.task-list {
+  list-style: none;
+  padding-left: 0.25rem;
+}
+
+/* ---- kanban / drag -------------------------------------------------------- */
+
+.os-drag-ghost {
+  opacity: 0.45;
+}
+
+.os-drop-target {
+  background: hsl(var(--os-primary) / 0.06);
+  box-shadow: inset 0 0 0 1px hsl(var(--os-primary) / 0.45);
+}
+
+/* ---- mobile helpers ------------------------------------------------------- */
+
+@media (max-width: 767px) {
+  .os-root {
+    font-size: 0.875rem;
+  }
+  /* 44px+ tap targets: opt out with `os-tap-none` for dense inline controls */
+  .os-root button:not(.os-tap-none),
+  .os-root a[role='button']:not(.os-tap-none),
+  .os-root input:not([type='checkbox']):not([type='radio']):not(.os-tap-none),
+  .os-root textarea:not(.os-tap-none),
+  .os-root select:not(.os-tap-none) {
+    min-height: 44px;
+  }
+  .os-root button:not(.os-tap-none)[data-size='icon'] {
+    min-width: 44px;
+  }
+  /* nothing inside a card may force the page wider than the viewport */
+  .os-root .os-scroll-x {
+    max-width: calc(100vw - 2rem);
+  }
+}

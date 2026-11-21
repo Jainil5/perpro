@@ -29,3 +29,18 @@ yarn-error.log*
 .vscode
 .idea
 
+# Python / MyOS backend
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+backend/data/*.db
+backend/data/*.db-*
+backend/.env
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# MyOS local storage (uploads, exports, caches)
+storage/
+

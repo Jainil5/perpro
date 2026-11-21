@@ -1,27 +1,15 @@
-import type { Metadata, Viewport } from 'next';
+import type { Metadata } from 'next';
 import './globals.css';
-import Shell from '@/components/Shell';
-import MotionProvider from '@/components/MotionProvider';
 
 export const metadata: Metadata = {
-  title: 'PerPro — Founder Command Center',
-  description: 'Notes, tasks, meetings and AI news for a busy founder.',
-};
-
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  themeColor: '#09090b',
+  title: 'PerPro',
+  description: 'PerPro and MyOS workspaces.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body>
-        <MotionProvider>
-          <Shell>{children}</Shell>
-        </MotionProvider>
-      </body>
+    <html lang="en" suppressHydrationWarning>
+      <body>{children}</body>
     </html>
   );
 }

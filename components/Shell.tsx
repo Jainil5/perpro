@@ -13,7 +13,12 @@ const NAV = [
   { href: '/meetings', label: 'Meetings', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
   { href: '/notes', label: 'Notes', icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.4-9.6a2 2 0 112.8 2.8L11.8 15.8 8 17l1.2-3.8 9.4-9.8z' },
   { href: '/news', label: 'News', icon: 'M4 5h13v14H6a2 2 0 01-2-2V5zM17 8h3v9a2 2 0 01-2 2M7 8h7M7 12h7M7 16h4' },
+  { href: '/os', label: 'MyOS', icon: 'M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3zm0 4.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM4 12l6 3.4M14 15.4L20 12' },
 ];
+
+// MyOS is a separate surface with its own shell; keep it out of the cramped
+// mobile tab bar and reachable from the sidebar and ⌘K instead.
+const MOBILE_NAV = NAV.filter((item) => item.href !== '/os');
 
 function Icon({ d, className }: { d: string; className?: string }) {
   return (
@@ -91,7 +96,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       <main className="px-4 pb-24 pt-6 md:ml-56 md:px-8 md:pb-12">{children}</main>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-zinc-800 bg-zinc-950/95 backdrop-blur md:hidden">
-        {NAV.map((item) => {
+        {MOBILE_NAV.map((item) => {
           const active = pathname === item.href;
           return (
             <Link

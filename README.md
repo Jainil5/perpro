@@ -1,8 +1,91 @@
-# PerPro — Founder Command Center
+# PerPro + MyOS
 
-Personal productivity app for a developer / AI startup founder: quick capture, tasks, projects with JSON import, meetings, markdown notes with AI assist, and an aggregated AI news feed. Next.js 15 + Tailwind + Supabase.
+One repository, two surfaces:
 
-## Setup
+- **PerPro — Founder Command Center** (root `/`): quick capture, tasks, projects with JSON import, meetings, markdown notes with AI assist, aggregated AI news. Next.js + Tailwind + Supabase.
+- **MyOS — Personal & Business Operating System** (`/os`): the modular local-first command centre described in [docs/MYOS/ARCHITECTURE.md](docs/MYOS/ARCHITECTURE.md). Next.js + shadcn/ui frontend, **FastAPI** backend, **SQLite** via SQLAlchemy + Alembic.
+
+Both share one Next.js app. `app/(perpro)` and `app/(os)` are route groups, so every existing
+PerPro URL (`/`, `/tasks`, `/projects/…`, `/notes`, `/inbox`, `/meetings`, `/news`) is unchanged;
+MyOS lives under `/os` with its own shell, sidebar and light/dark theme.
+
+## MyOS quickstart
+
+```bash
+make setup     # pip install -r backend/requirements.txt + npm install
+make dev       # FastAPI on :8000 (background) + Next.js on :3002
+open http://localhost:3002/os
+```
+
+Or step by step, without make:
+
+```bash
+cd backend && python3 -m pip install -r requirements.txt
+python3 -m alembic upgrade head     # creates backend/data/myos.db and all 19 Phase-1 tables
+python3 -m app.cli seed             # idempotent demo data (relative dates, always "alive")
+python3 -m uvicorn app.main:app --port 8000
+cd .. && npm install && npm run dev -- -p 3002
+```
+
+No credentials are required for anything in MyOS. The browser only ever talks to Next.js;
+`app/api/os/[...path]/route.ts` proxies to FastAPI and strips `Authorization`, `Cookie` and
+`X-API-Key` headers, so a future Google/Stripe/database credential can never leak to the client.
+
+Container: `docker compose up` starts `api` (migrates then serves) and `web`, with the SQLite
+file in a named volume.
+
+### What Phase 1 does
+
+| Screen | Route |
+|---|---|
+| Personal dashboard — agenda, today's/overdue tasks, active projects with next action, milestones, notifications, recent notes, activity, rule-based insights, reorderable/hideable widgets, quick actions | `/os` |
+| Projects — filters, progress, create/edit, delete with type-to-confirm | `/os/projects` |
+| Project workspace — next action, kanban (drag) + table, milestones timeline, stats, project activity | `/os/projects/[id]` |
+| Tasks — status/priority/project/tag/due filters, search, sort, list + board, bulk actions, paging, recurring rollover, JSON import | `/os/tasks` |
+| Notes — category rail, tags, search, favourites, markdown editor + preview, relations and backlinks | `/os/notes` |
+| People — contacts with company join, tags, plus company CRUD | `/os/contacts` |
+| Goals — progress slider, target date, linked project | `/os/goals` |
+| Search — global, grouped and ranked (also ⌘K everywhere) | `/os/search` |
+| Notifications + reminders — derived, idempotent, mark read/dismiss, snooze | `/os/notifications` |
+| Activity — unified timeline grouped by day | `/os/activity` |
+| Settings — workspace defaults, theme, API health, demo seed/reset, full JSON export, data location | `/os/settings` |
+| Roadmap — what each later phase unlocks | `/os/roadmap` |
+
+Task import is deliberately forgiving — it accepts a bare array or `{"tasks": […]}`, markdown
+fences, prose around the JSON, trailing commas, `priority: "High"`, and aliases (`name`→title,
+`deadline`/`due`→due_date, `done`/`status`→completed, `desc`→description). Ids are always
+generated server-side, duplicate titles are skipped unless you ask otherwise, and the Import
+dialog can copy both the expected JSON shape and a prompt to hand an agent that produces it.
+
+### Verification
+
+```bash
+cd backend && python3 -m pytest -q   # 368 passed — services, API contract, migrations, CLI
+npm test                             # 13 passed — PerPro import + implementation-brief logic
+npm run build                        # both apps type-check and compile
+```
+
+Derived logic that is unit-tested rather than eyeballed: project progress
+(including the `manual_progress` and completed/archived rules), overdue and due-today boundaries,
+recurrence rollover including month-end clamping, the tolerant importer, search ranking and
+grouping, dashboard insight rules, notification dedupe across two refreshes, activity logging,
+the deep-link target set, and the cascade rules on delete.
+
+### MyOS docs
+
+[docs/MYOS/ARCHITECTURE.md](docs/MYOS/ARCHITECTURE.md) — layout, boundaries, conventions, theming, AI posture.
+[docs/MYOS/API.md](docs/MYOS/API.md) — the v1 contract every screen is built against.
+[docs/MYOS/DATA_MODEL.md](docs/MYOS/DATA_MODEL.md) — table-by-table schema, delete matrix, derived
+values, Postgres mapping, and the Phase 2–6 tables designed but not yet migrated.
+
+AI is optional and off by default (`MYOS_AI_ENABLED=0`); nothing in `/os` needs a model to work.
+Phases 2–6 (career pipeline, freelance CRM, finance and cost scenarios, Google/GitHub/Supabase
+integrations, business analytics, AI tool calling) are specified as additive migrations — the
+sidebar shows them as roadmap entries rather than fake screens until they exist.
+
+---
+
+## PerPro setup
 
 1. **Database** — paste [`supabase/schema.sql`](supabase/schema.sql) into Supabase Dashboard → SQL Editor → Run. Creates `inbox`, `tasks`, `meetings`, `notes`, `news_items`, plus `projects`,
 `project_tasks` and `project_milestones`. Safe to re-run.
