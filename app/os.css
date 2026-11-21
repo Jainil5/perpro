@@ -1,50 +1,68 @@
 /* ============================================================================
-   MyOS design tokens — scoped to `.os-root` only.
-   app/globals.css (PerPro) is untouched: nothing here leaks outside `.os-root`,
-   and every rule below that needs to neutralise a global PerPro style is
-   written with an `.os-root` prefix so it wins on specificity.
+   App-wide design tokens — the Studio—BA language described in docs/DESIGN.md.
+
+   Scope contract: components/Shell.tsx mounts `os-root` (+ `os-light` when the
+   theme store says light) on the single app shell root, so these tokens drive
+   BOTH the MyOS screens and the PerPro/legacy screens. app/globals.css keeps
+   PerPro's own variable names (--bg-surface, --accent-brand, …) but is retuned
+   to the same measured palette, so there is exactly one look per theme.
+
    Values are HSL channels so Tailwind can apply `/opacity` modifiers.
 
-   Theming contract: app/(os)/layout.tsx mounts <div class="os-root"> (dark) or
-   <div class="os-root os-light">, and os-bootstrap mirrors both classes onto
-   <html> before paint (no hydration flash). The token *declarations* live on
-   `html.os-root` only, so the wrapper always inherits the already-correct
-   palette instead of re-declaring a default dark one.
+   The reference is black/white/grey: colour is reserved for state only
+   (rule 1 of DESIGN.md), surfaces are divided by hairlines rather than cards
+   (rule 3), and the vertical grid + white disc are the only ornaments (rules
+   4–5). Radius is 2px and shadows are removed on purpose — tailwind.config.ts
+   points rounded-os-lg and shadow-os at the same small values so any leftover
+   utility class in a screen cannot reintroduce the old card look.
    ==========================================================================*/
 
 html.os-root {
   /* dark is the default; `.os-light` on the same element swaps the palette */
-  --os-background: 228 20% 7%;
-  --os-card: 228 17% 10%;
-  --os-elevated: 228 15% 14%;
-  --os-popover: 228 16% 12%;
-  --os-sidebar: 228 19% 9%;
-  --os-secondary: 228 14% 17%;
-  --os-muted: 228 14% 16%;
-  --os-accent: 228 13% 19%;
 
-  --os-foreground: 220 20% 93%;
-  --os-muted-foreground: 224 11% 63%;
-  --os-faint: 224 10% 46%;
+  /* canvas — measured off the 1440×900 capture */
+  --os-background: 220 9% 6.5%; /* #0F1012 */
+  --os-card: 220 9% 6.5%; /* panels are canvas + a hairline, not a fill */
+  --os-elevated: 220 9% 9%;
+  --os-popover: 220 9% 8%;
+  --os-sidebar: 220 9% 6.5%;
+  --os-secondary: 220 8% 11%;
+  --os-muted: 220 8% 11%;
+  --os-accent: 220 8% 13%;
+  --os-canvas-deep: 240 14% 2.7%; /* #060608 — header rule, footer band */
 
-  --os-line: 227 13% 21%;
-  --os-line-strong: 227 13% 29%;
-  --os-input: 228 16% 12%;
-  --os-ring: 244 74% 67%;
+  /* ink */
+  --os-foreground: 0 0% 100%; /* #FFFFFF */
+  --os-muted-foreground: 0 0% 80%; /* #CCCDCD */
+  --os-faint: 223 3% 43%; /* #6B6D72 */
 
-  --os-primary: 244 75% 61%;
-  --os-primary-foreground: 0 0% 100%;
+  /* lines */
+  --os-line: 210 1% 18%; /* #2D2E2F */
+  --os-line-strong: 210 2% 26%;
+  --os-line-faint: 225 7% 11%; /* #1A1B1E */
+  --os-input: 220 9% 6.5%;
+  --os-ring: 0 0% 100%;
+
+  /* primary = white ink on canvas, never a hue */
+  --os-primary: 0 0% 100%;
+  --os-primary-foreground: 220 9% 6.5%;
   --os-on-danger: 0 0% 100%;
 
-  --os-success: 152 58% 45%;
-  --os-warn: 38 92% 52%;
-  --os-danger: 2 76% 58%;
-  --os-info: 210 88% 60%;
-  --os-ai: 275 68% 62%;
+  /* semantic only: overdue/failed, completed/received, due-today/pending */
+  --os-success: 153 60% 53%; /* #3ECF8E */
+  --os-warn: 48 100% 45%; /* #E5B800 */
+  --os-danger: 0 100% 65%; /* #FF4D4D */
+  --os-info: 0 0% 80%; /* grey: info is not an accent */
+  --os-ai: 0 0% 80%; /* grey: nothing is "AI purple" any more */
 
-  --os-radius: 0.6rem;
-  --os-shadow: 0 1px 2px hsl(0 0% 0% / 0.32);
-  --os-shadow-lg: 0 16px 40px -12px hsl(0 0% 0% / 0.55);
+  --os-radius: 2px;
+
+  /* no elevation in this language; the variables exist so leftovers are inert */
+  --os-shadow: none;
+  --os-shadow-lg: none;
+
+  --os-grid-pitch: 24px;
+  --os-h-display: clamp(2.5rem, 5.2vw, 4.5rem);
 
   --os-font-display: 'Space Grotesk', system-ui, sans-serif;
   --os-font-body: 'DM Sans', system-ui, -apple-system, sans-serif;
@@ -54,36 +72,38 @@ html.os-root {
 }
 
 html.os-root.os-light {
-  --os-background: 220 24% 97%;
+  --os-background: 0 0% 100%; /* #FFFFFF */
   --os-card: 0 0% 100%;
-  --os-elevated: 220 22% 99%;
+  --os-elevated: 0 0% 97%;
   --os-popover: 0 0% 100%;
   --os-sidebar: 0 0% 100%;
-  --os-secondary: 220 18% 94%;
-  --os-muted: 220 18% 95%;
-  --os-accent: 222 20% 93%;
+  --os-secondary: 240 6% 94%;
+  --os-muted: 240 6% 95%;
+  --os-accent: 240 6% 93%;
+  --os-canvas-deep: 0 0% 95.7%; /* #F4F4F4 */
 
-  --os-foreground: 224 28% 14%;
-  --os-muted-foreground: 224 12% 42%;
-  --os-faint: 224 10% 56%;
+  --os-foreground: 220 9% 6.5%; /* ink inverts to near-black */
+  --os-muted-foreground: 220 3% 36%; /* #5A5C60 */
+  --os-faint: 220 3% 55%;
 
-  --os-line: 220 15% 88%;
-  --os-line-strong: 220 13% 78%;
+  --os-line: 240 3% 87%; /* #DCDCDE */
+  --os-line-strong: 240 3% 76%;
+  --os-line-faint: 240 6% 91%;
   --os-input: 0 0% 100%;
-  --os-ring: 244 68% 58%;
+  --os-ring: 220 9% 6.5%;
 
-  --os-primary: 244 68% 56%;
+  --os-primary: 220 9% 6.5%;
   --os-primary-foreground: 0 0% 100%;
   --os-on-danger: 0 0% 100%;
 
-  --os-success: 154 58% 36%;
-  --os-warn: 34 92% 42%;
-  --os-danger: 2 74% 52%;
-  --os-info: 210 84% 44%;
-  --os-ai: 275 62% 50%;
+  --os-success: 153 69% 32%;
+  --os-warn: 46 100% 32%;
+  --os-danger: 0 69% 47%;
+  --os-info: 220 3% 36%;
+  --os-ai: 220 3% 36%;
 
-  --os-shadow: 0 1px 2px hsl(224 30% 30% / 0.08);
-  --os-shadow-lg: 0 18px 40px -16px hsl(224 30% 30% / 0.28);
+  --os-shadow: none;
+  --os-shadow-lg: none;
 
   color-scheme: light;
 }
@@ -96,36 +116,49 @@ html.os-root {
 
 .os-root {
   font-family: var(--os-font-body);
-  font-size: 0.8125rem;
-  line-height: 1.55;
-  color: hsl(var(--os-foreground));
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: hsl(var(--os-muted-foreground));
   background-color: hsl(var(--os-background));
   -webkit-font-smoothing: antialiased;
   letter-spacing: -0.006em;
 }
 
-.os-root *,
-.os-root *::before,
-.os-root *::after {
-  border-color: hsl(var(--os-line));
-}
+/* Border colour is NOT set here: tailwind.config.ts maps the default
+   border/divide colour onto --os-line, so a bare `border` draws a hairline
+   while `border-transparent` and `border-foreground` still win normally. A
+   blanket `.os-root *{border-color}` rule used to out-specify those utilities
+   and made hairline-only components fight the cascade. */
 
 .os-root h1,
 .os-root h2,
 .os-root h3 {
   font-family: var(--os-font-display);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+  font-weight: 550;
   color: hsl(var(--os-foreground));
 }
 
-/* globals.css styles every bare input/textarea/select with PerPro's dark
-   palette; re-anchor them to the MyOS tokens so light mode is correct. */
+/* globals.css styles every bare input/textarea/select; re-anchor them to the
+   token set. Inputs are transparent with a single bottom hairline — the field
+   is the line, focus brightens it to ink rather than adding a glow. */
 .os-root input,
 .os-root textarea,
 .os-root select {
-  background-color: hsl(var(--os-input));
-  border-color: hsl(var(--os-line));
+  background-color: transparent;
+  border-color: transparent;
+  border-bottom-color: hsl(var(--os-line));
+  border-radius: var(--os-radius);
   color: hsl(var(--os-foreground));
+}
+
+.os-root input:focus,
+.os-root textarea:focus,
+.os-root select:focus {
+  border-color: transparent;
+  border-bottom-color: hsl(var(--os-foreground));
+  box-shadow: none;
+  outline: none;
 }
 
 .os-root input::placeholder,
@@ -135,9 +168,10 @@ html.os-root {
 
 /* globals.css sets a PerPro-coloured ring on every focus; re-anchor it. */
 .os-root :focus-visible {
-  --tw-ring-color: hsl(var(--os-ring));
+  --tw-ring-color: hsl(var(--os-foreground));
   --tw-ring-offset-color: hsl(var(--os-background));
-  outline: none;
+  outline: 1px solid hsl(var(--os-line-strong));
+  outline-offset: 1px;
 }
 
 .os-root ::-webkit-scrollbar {
@@ -145,8 +179,8 @@ html.os-root {
   height: 9px;
 }
 .os-root ::-webkit-scrollbar-thumb {
-  border-radius: 9999px;
-  background: hsl(var(--os-line-strong));
+  border-radius: 0;
+  background: hsl(var(--os-line));
 }
 .os-root ::-webkit-scrollbar-track {
   background: transparent;
@@ -154,41 +188,187 @@ html.os-root {
 
 /* ---- typography helpers --------------------------------------------------- */
 
-.os-eyebrow {
+/* 11px uppercase micro-label: the only way a section may introduce itself */
+.os-label {
   font-family: var(--os-font-display);
   font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
+  color: hsl(var(--os-muted-foreground));
+}
+
+/* group headers in the nav / panel corners are fainter */
+.os-label-faint {
   color: hsl(var(--os-faint));
 }
 
+/* the reference's statement type: huge, sentence-case, tight */
+.os-display {
+  font-family: var(--os-font-display);
+  font-size: var(--os-h-display);
+  font-weight: 550;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  color: hsl(var(--os-foreground));
+}
+
+/* page title: display voice scaled down for a working screen */
 .os-title {
   font-family: var(--os-font-display);
-  font-size: 1.375rem;
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: -0.025em;
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  font-weight: 550;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  color: hsl(var(--os-foreground));
 }
 
 /* monospace + tabular figures; the caller owns the size via a text-* utility */
 .os-mono {
   font-family: var(--os-font-mono);
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+/* corner micro-data: mono, faint, uppercase-friendly */
+.os-micro {
+  font-family: var(--os-font-mono);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: hsl(var(--os-faint));
 }
 
 .os-num {
-  font-family: var(--os-font-display);
+  font-family: var(--os-font-mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
+  color: hsl(var(--os-foreground));
 }
 
-/* ---- motion --------------------------------------------------------------- */
+/* ---- signature ornaments -------------------------------------------------- */
+
+/* Bounded field of vertical hairlines. Masked so the lines stop mid-block,
+   exactly like the reference. Use behind the dashboard hero, the disc mark and
+   empty states only — never site-wide, never behind a form. */
+.os-grid {
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent calc(var(--os-grid-pitch) - 1px),
+    hsl(var(--os-line)) calc(var(--os-grid-pitch) - 1px),
+    hsl(var(--os-line)) var(--os-grid-pitch)
+  );
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 55%, transparent 100%);
+  mask-image: linear-gradient(to right, #000 0%, #000 55%, transparent 100%);
+}
+
+.os-grid-full {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+/* The brand disc. One per screen. */
+.os-disc {
+  display: inline-block;
+  border-radius: 9999px;
+  background: hsl(var(--os-foreground));
+}
+
+/* Progress dial: a white arc on a hairline ring with a hairline gap at 12
+   o'clock. Pass the percentage as --dial (0–100). */
+.os-dial {
+  --dial: 0;
+  position: relative;
+  border-radius: 9999px;
+  background: conic-gradient(
+    from -90deg,
+    hsl(var(--os-foreground)) 0 calc(var(--dial) * 3.6deg),
+    hsl(var(--os-line)) calc(var(--dial) * 3.6deg) 360deg
+  );
+}
+
+.os-dial::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 9999px;
+  background: hsl(var(--os-background));
+}
+
+.os-dial > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* 8px status glyph: open = outline, in progress = half, done = filled.
+   Colour is ink, never a hue; state colours come from a data attribute. */
+.os-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  border: 1px solid hsl(var(--os-line-strong));
+  background: transparent;
+}
+
+.os-dot[data-state='in_progress'] {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--os-foreground)) 0 50%,
+    transparent 50% 100%
+  );
+  border-color: hsl(var(--os-foreground));
+}
+
+.os-dot[data-state='done'],
+.os-dot[data-state='completed'] {
+  background: hsl(var(--os-foreground));
+  border-color: hsl(var(--os-foreground));
+}
+
+.os-dot[data-tone='critical'] {
+  border-color: hsl(var(--os-danger));
+  background: hsl(var(--os-danger) / 0.15);
+}
+
+.os-dot[data-tone='warning'] {
+  border-color: hsl(var(--os-warn));
+  background: hsl(var(--os-warn) / 0.15);
+}
+
+/* A panel is a hairline on canvas — not a card, not a shadow. */
+.os-panel {
+  border: 1px solid hsl(var(--os-line));
+  border-radius: var(--os-radius);
+  background: transparent;
+  box-shadow: none;
+}
+
+/* half-disc theme toggle (components/os/ThemeToggle.tsx) */
+.os-toggle-disc {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  border: 1px solid hsl(var(--os-foreground));
+  background: linear-gradient(
+    90deg,
+    hsl(var(--os-foreground)) 0 50%,
+    transparent 50% 100%
+  );
+}
+
+/* ---- motion: mechanical, 120–180ms, no springs ---------------------------- */
+
+.os-root * {
+  transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
 
 @keyframes os-fade-up {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(1px);
   }
   to {
     opacity: 1;
@@ -197,7 +377,7 @@ html.os-root {
 }
 
 .os-enter {
-  animation: os-fade-up 0.22s ease-out both;
+  animation: os-fade-up 0.15s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -206,10 +386,10 @@ html.os-root {
   }
 }
 
-/* ---- markdown (MyOS flavour of the shared .markdown-body) ----------------- */
+/* ---- markdown (shared by both screen sets) -------------------------------- */
 
 .os-root .markdown-body {
-  color: hsl(var(--os-foreground));
+  color: hsl(var(--os-muted-foreground));
   font-size: 0.875rem;
   line-height: 1.7;
 }
@@ -218,33 +398,37 @@ html.os-root {
 .os-root .markdown-body h3 {
   color: hsl(var(--os-foreground));
   margin-block: 1rem 0.5rem;
+  font-weight: 550;
 }
 .os-root .markdown-body h1 {
-  font-size: 1.25rem;
+  font-size: 1.375rem;
 }
 .os-root .markdown-body h2 {
-  font-size: 1.0625rem;
+  font-size: 1.125rem;
 }
 .os-root .markdown-body h3 {
   font-size: 0.9375rem;
 }
 .os-root .markdown-body a {
-  color: hsl(var(--os-primary));
+  color: hsl(var(--os-foreground));
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 .os-root .markdown-body code {
-  background: hsl(var(--os-muted));
+  background: transparent;
+  border: 1px solid hsl(var(--os-line));
   color: hsl(var(--os-foreground));
-  border-radius: 0.3rem;
+  border-radius: var(--os-radius);
 }
 .os-root .markdown-body pre {
-  background: hsl(var(--os-muted));
+  background: transparent;
   border: 1px solid hsl(var(--os-line));
+  border-radius: var(--os-radius);
 }
 .os-root .markdown-body pre code {
   background: transparent;
   color: hsl(var(--os-muted-foreground));
+  border: 0;
 }
 .os-root .markdown-body blockquote {
   border-left-color: hsl(var(--os-line-strong));
@@ -265,12 +449,13 @@ html.os-root {
 /* ---- kanban / drag -------------------------------------------------------- */
 
 .os-drag-ghost {
-  opacity: 0.45;
+  opacity: 0.4;
 }
 
+/* a drag target is a 1px ink rule at the top of the column, not a fill */
 .os-drop-target {
-  background: hsl(var(--os-primary) / 0.06);
-  box-shadow: inset 0 0 0 1px hsl(var(--os-primary) / 0.45);
+  background: transparent;
+  box-shadow: inset 0 1px 0 0 hsl(var(--os-foreground));
 }
 
 /* ---- mobile helpers ------------------------------------------------------- */

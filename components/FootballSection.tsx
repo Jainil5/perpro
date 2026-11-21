@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Button, EmptyState, ErrorBanner, ProgressRing, Spinner } from '@/components/ui';
 import { FootballMatch, FootballTeam } from '@/lib/types';
 import { format, formatDistanceToNow, isToday, isTomorrow, parseISO } from 'date-fns';
@@ -22,13 +21,17 @@ const DEFAULT_TEAMS: FootballTeam[] = [
   { id: '133729', name: 'Atlético Madrid', short: 'ATM', league: 'Spanish La Liga', badge: null },
 ];
 
+/** Club art is data, not chrome: the fallback is a hairline mono chip. */
 function TeamBadge({ src, name, small = false }: { src: string | null; name: string; small?: boolean }) {
   const [broken, setBroken] = useState(false);
   useEffect(() => setBroken(false), [src]);
-  const box = small ? 'h-6 w-6 text-[10px]' : 'h-10 w-10 text-sm';
   if (!src || broken) {
     return (
-      <span className={`${box} flex shrink-0 items-center justify-center rounded-full bg-[var(--bg-elevated)] font-bold text-[var(--fg-muted)]`}>
+      <span
+        className={`${
+          small ? 'h-6 w-6 text-[10px]' : 'h-9 w-9 text-[11px]'
+        } os-mono flex shrink-0 items-center justify-center rounded-os border border-line text-muted-foreground`}
+      >
         {name.charAt(0)}
       </span>
     );
@@ -39,7 +42,7 @@ function TeamBadge({ src, name, small = false }: { src: string | null; name: str
       alt=""
       loading="lazy"
       onError={() => setBroken(true)}
-      className={`${small ? 'h-6 w-6' : 'h-10 w-10'} shrink-0 object-contain`}
+      className={`${small ? 'h-6 w-6' : 'h-9 w-9'} shrink-0 object-contain`}
     />
   );
 }
@@ -50,30 +53,21 @@ function dayLabel(date: Date): string {
   return format(date, 'EEEE, MMMM d');
 }
 
+/** Win / loss / draw is real state, so it keeps the semantic inks. */
 function OutcomeChip({ result }: { result: 'W' | 'L' | 'D' }) {
-  const color =
-    result === 'W' ? 'var(--accent-success)' : result === 'L' ? 'var(--accent-critical)' : 'var(--accent-warn)';
+  const tone =
+    result === 'W' ? 'text-success' : result === 'L' ? 'text-danger' : 'text-warning';
   return (
-    <motion.span
-      initial={{ scale: 0 }}
-      animate={{ scale: 1 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-      className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-[var(--bg-deep)]"
-      style={{ backgroundColor: color }}
-    >
-      {result}
-    </motion.span>
+    <span className={`os-micro ${tone}`}>{result === 'W' ? 'win' : result === 'L' ? 'loss' : 'draw'}</span>
   );
 }
 
-function MatchCard({
+function MatchRow({
   match,
   followedIds,
-  index,
 }: {
   match: FootballMatch;
   followedIds: Set<string>;
-  index: number;
 }) {
   const finished = match.homeScore !== null && match.awayScore !== null;
   const date = parseISO(match.timestamp);
@@ -89,65 +83,73 @@ function MatchCard({
   const awayOut = outcome('away');
 
   return (
-    <motion.a
+    <a
       href={match.url}
       target="_blank"
       rel="noopener noreferrer"
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.4) }}
-      whileHover={{ x: 4 }}
-      className="block rounded-xl border border-[var(--fg-subtle)] bg-[var(--bg-surface)] p-4 transition hover:border-[var(--accent-success)]/50"
+      className="block border-b border-line py-3 transition-colors duration-150 hover:bg-canvas-deep"
     >
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[var(--fg-subtle)]">
-        <span className="rounded bg-[var(--bg-elevated)] px-1.5 py-0.5 text-[var(--fg-muted)]">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <span className="os-label">
           {match.league}
           {match.round ? ` · MD ${match.round}` : ''}
         </span>
-        <span>
+        <span className="os-mono text-[11px] text-muted-foreground">
           {finished
             ? formatDistanceToNow(date, { addSuffix: true })
             : `${dayLabel(date)} · ${format(date, 'HH:mm')}`}
         </span>
       </div>
+
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <div className="flex flex-col items-center gap-1.5 text-center">
-          <TeamBadge src={match.home.badge} name={match.home.name} />
-          <span className={`text-xs leading-tight ${followedIds.has(match.home.id) ? 'font-semibold text-[var(--fg-primary)]' : 'text-[var(--fg-muted)]'}`}>
-            {match.home.name}
-          </span>
-          {homeOut && <OutcomeChip result={homeOut} />}
+        <div className="flex min-w-0 items-center justify-end gap-2 text-right">
+          <div className="min-w-0">
+            <span
+              className={`block truncate text-[13px] ${
+                followedIds.has(match.home.id) ? 'text-foreground' : 'text-muted-foreground'
+              }`}
+            >
+              {match.home.name}
+            </span>
+            {homeOut ? <OutcomeChip result={homeOut} /> : null}
+          </div>
+          <TeamBadge src={match.home.badge} name={match.home.name} small />
         </div>
-        <div className="flex min-w-[64px] flex-col items-center">
+
+        <div className="flex min-w-[72px] flex-col items-center border-x border-line px-3">
           {finished ? (
-            <span className="font-mono text-xl font-bold tracking-tight text-[var(--fg-primary)]">
+            <span className="os-num text-[18px] text-foreground">
               {match.homeScore}
-              <span className="mx-1 text-[var(--fg-subtle)]">–</span>
+              <span className="mx-1 text-muted-foreground">–</span>
               {match.awayScore}
             </span>
           ) : (
             <>
-              <span className="font-mono text-lg font-semibold text-[var(--accent-success)]">
-                {format(date, 'HH:mm')}
-              </span>
-              <span className="text-[10px] uppercase tracking-wider text-[var(--fg-subtle)]">
-                {isToday(date) ? 'Today' : format(date, 'MMM d')}
-              </span>
+              <span className="os-mono text-[15px] text-foreground">{format(date, 'HH:mm')}</span>
+              <span className="os-label">{isToday(date) ? 'today' : format(date, 'MMM d')}</span>
             </>
           )}
         </div>
-        <div className="flex flex-col items-center gap-1.5 text-center">
-          <TeamBadge src={match.away.badge} name={match.away.name} />
-          <span className={`text-xs leading-tight ${followedIds.has(match.away.id) ? 'font-semibold text-[var(--fg-primary)]' : 'text-[var(--fg-muted)]'}`}>
-            {match.away.name}
-          </span>
-          {awayOut && <OutcomeChip result={awayOut} />}
+
+        <div className="flex min-w-0 items-center gap-2">
+          <TeamBadge src={match.away.badge} name={match.away.name} small />
+          <div className="min-w-0">
+            <span
+              className={`block truncate text-[13px] ${
+                followedIds.has(match.away.id) ? 'text-foreground' : 'text-muted-foreground'
+              }`}
+            >
+              {match.away.name}
+            </span>
+            {awayOut ? <OutcomeChip result={awayOut} /> : null}
+          </div>
         </div>
       </div>
-      {match.venue && (
-        <p className="mt-3 text-center text-[11px] text-[var(--fg-subtle)]">{match.venue}</p>
-      )}
-    </motion.a>
+
+      {match.venue ? (
+        <p className="os-micro mt-2 text-center">{match.venue}</p>
+      ) : null}
+    </a>
   );
 }
 
@@ -292,33 +294,24 @@ export default function FootballSection() {
   }
 
   return (
-    <div className="space-y-5">
-      <AnimatePresence mode="wait">{error && <ErrorBanner message={error} />}</AnimatePresence>
+    <div className="space-y-6">
+      {error && <ErrorBanner message={error} />}
 
-      <motion.section
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="rounded-xl border border-[var(--accent-success)]/25 bg-gradient-to-br from-[var(--accent-success)]/[0.07] via-transparent to-transparent p-4"
-      >
+      <section className="os-panel p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-[var(--fg-primary)]">
-            Your teams{' '}
-            <span className="font-normal text-[var(--fg-subtle)]">
+          <h2 className="os-label">
+            Your teams
+            <span className="os-mono ml-2 font-normal">
               {teams.length}/{MAX_TEAMS}
             </span>
           </h2>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             {DEFAULT_TEAMS.some((d) => !followedIds.has(d.id)) && (
-              <motion.button
-                onClick={restoreDefaults}
-                whileTap={{ scale: 0.95 }}
-                className="min-h-[44px] rounded-lg px-3 text-xs font-medium text-[var(--accent-success)] transition hover:bg-[var(--accent-success)]/10"
-              >
+              <Button variant="ghost" onClick={restoreDefaults}>
                 + UCL top 10
-              </motion.button>
+              </Button>
             )}
-            <Button variant="ghost" onClick={refresh} disabled={!teams.length} loading={refreshing}>
+            <Button variant="secondary" onClick={refresh} disabled={!teams.length} loading={refreshing}>
               Refresh matches
             </Button>
           </div>
@@ -331,181 +324,150 @@ export default function FootballSection() {
             onFocus={() => searchResults.length > 0 && setSearchOpen(true)}
             onKeyDown={(e) => e.key === 'Escape' && setSearchOpen(false)}
             placeholder="Search any club — Arsenal, Real Madrid, PSG…"
-            className="input w-full"
+            className="w-full"
             aria-label="Search football teams"
           />
           {searching && (
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--accent-success)]">
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
               <ProgressRing size={14} />
             </span>
           )}
-          <AnimatePresence>
-            {searchOpen && searchResults.length > 0 && (
-              <motion.ul
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.15 }}
-                className="absolute z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-[var(--fg-subtle)] bg-[var(--bg-elevated)] shadow-xl"
-              >
-                {searchResults.map((t) => {
-                  const followed = followedIds.has(t.id);
-                  return (
-                    <li key={t.id}>
-                      <button
-                        onClick={() => addTeam(t)}
-                        disabled={followed || teams.length >= MAX_TEAMS}
-                        className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition hover:bg-[var(--bg-surface)] disabled:opacity-50"
-                      >
-                        <TeamBadge src={t.badge} name={t.name} small />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm text-[var(--fg-primary)]">{t.name}</span>
-                          <span className="block truncate text-[11px] text-[var(--fg-subtle)]">{t.league}</span>
-                        </span>
-                        <span className="text-xs font-medium text-[var(--accent-success)]">
-                          {followed ? 'Following' : '+ Follow'}
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </motion.ul>
-            )}
-          </AnimatePresence>
+          {searchOpen && searchResults.length > 0 && (
+            <ul className="os-enter absolute z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-os border border-line bg-background">
+              {searchResults.map((t) => {
+                const followed = followedIds.has(t.id);
+                return (
+                  <li key={t.id} className="border-b border-line last:border-b-0">
+                    <button
+                      onClick={() => addTeam(t)}
+                      disabled={followed || teams.length >= MAX_TEAMS}
+                      className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors duration-150 hover:bg-canvas-deep disabled:opacity-50"
+                    >
+                      <TeamBadge src={t.badge} name={t.name} small />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13px] text-foreground">{t.name}</span>
+                        <span className="os-micro block truncate">{t.league}</span>
+                      </span>
+                      <span className={`os-label ${followed ? 'text-muted-foreground' : 'text-foreground'}`}>
+                        {followed ? 'following' : 'follow'}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
 
         {teams.length > 0 && (
-          <motion.div layout className="mt-3 flex flex-wrap gap-2">
-            <AnimatePresence>
-              {teams.map((t) => (
-                <motion.span
-                  key={t.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-                  className="inline-flex items-center gap-2 rounded-full border border-[var(--accent-success)]/30 bg-[var(--bg-surface)] py-1 pl-2 pr-1"
-                  title={`${t.name} · ${t.league}`}
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {teams.map((t) => (
+              <span
+                key={t.id}
+                title={`${t.name} · ${t.league}`}
+                className="inline-flex items-center gap-2 rounded-os border border-line py-1 pl-2 pr-1"
+              >
+                <TeamBadge src={t.badge ?? badgeById.get(t.id) ?? null} name={t.name} small />
+                <span className="os-mono text-[11px] text-foreground">
+                  {t.short || t.name.slice(0, 3).toUpperCase()}
+                </span>
+                <button
+                  onClick={() => removeTeam(t.id)}
+                  aria-label={`Stop following ${t.name}`}
+                  className="os-tap-none flex h-7 w-7 items-center justify-center rounded-os text-muted-foreground transition-colors duration-150 hover:border-danger hover:text-danger"
                 >
-                  <TeamBadge src={t.badge ?? badgeById.get(t.id) ?? null} name={t.name} small />
-                  <span className="font-mono text-xs font-bold tracking-wide text-[var(--fg-primary)]">
-                    {t.short || t.name.slice(0, 3).toUpperCase()}
-                  </span>
-                  <motion.button
-                    onClick={() => removeTeam(t.id)}
-                    aria-label={`Stop following ${t.name}`}
-                    whileTap={{ scale: 0.85 }}
-                    whileHover={{ scale: 1.1 }}
-                    className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--fg-subtle)] transition hover:bg-[var(--accent-critical)]/15 hover:text-[var(--accent-critical)]"
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-3.5 w-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1}
+                    strokeLinecap="round"
+                    aria-hidden="true"
                   >
-                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-                      <path d="M6 6l12 12M18 6L6 18" />
-                    </svg>
-                  </motion.button>
-                </motion.span>
-              ))}
-            </AnimatePresence>
-          </motion.div>
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
+              </span>
+            ))}
+          </div>
         )}
 
         {teams.length === 0 && (
-          <div className="mt-4">
-            <p className="mb-2 text-[11px] uppercase tracking-wider text-[var(--fg-subtle)]">
-              Quick follow · UCL top 10
-            </p>
+          <div className="mt-4 border-t border-line pt-4">
+            <p className="os-label mb-2">Quick follow · UCL top 10</p>
             <div className="flex flex-wrap gap-1.5">
-              {DEFAULT_TEAMS.map((t, i) => (
-                <motion.button
+              {DEFAULT_TEAMS.map((t) => (
+                <button
                   key={t.id}
                   onClick={() => addTeam(t)}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.25, delay: 0.1 + i * 0.04 }}
-                  whileTap={{ scale: 0.95 }}
-                  whileHover={{ scale: 1.03 }}
-                  className="min-h-[36px] rounded-full border border-[var(--fg-subtle)] px-3 text-xs text-[var(--fg-muted)] transition hover:border-[var(--accent-success)]/60 hover:text-[var(--fg-primary)]"
+                  className="os-tap-none min-h-[36px] rounded-os border border-line px-3 text-[12px] text-muted-foreground transition-colors duration-150 hover:border-line-strong hover:text-foreground"
                 >
                   {t.name}
-                </motion.button>
+                </button>
               ))}
             </div>
           </div>
         )}
-      </motion.section>
+      </section>
 
-      <AnimatePresence mode="wait">
-        {!hydrated || loading ? (
-          <Spinner key="loading" label="Loading fixtures…" />
-        ) : teams.length === 0 ? (
-          <EmptyState
-            key="empty"
-            title="Follow a team to see their fixtures"
-            hint="Search any club above, or quick-follow the UCL top 10. Upcoming matches and recent results will land here."
-          />
-        ) : !error && upcoming.length === 0 && results.length === 0 ? (
-          <EmptyState
-            key="no-matches"
-            title="No matches found for your teams"
-            hint="The free data source may be off-season for these clubs. Try Refresh matches or add another team."
-          />
-        ) : (
-          <motion.div
-            key="matches"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="space-y-6"
-          >
-            {grouped.length > 0 && (
-              <section>
-                <h2 className="mb-3 text-sm font-semibold text-[var(--fg-primary)]">
-                  Upcoming matches
-                  <span className="ml-2 rounded-full bg-[var(--accent-success)]/15 px-2 py-0.5 text-[10px] font-medium text-[var(--accent-success)]">
-                    {upcoming.length}
-                  </span>
-                </h2>
-                <div className="space-y-4">
-                  {grouped.map((g) => (
-                    <div key={g.key}>
-                      <p className="mb-2 flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-[var(--fg-subtle)]">
-                        {dayLabel(g.date)}
-                        {(isToday(g.date) || isTomorrow(g.date)) && (
-                          <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent-success)]" />
-                        )}
-                      </p>
-                      <div className="space-y-3">
-                        {g.matches.map((m, i) => (
-                          <MatchCard key={m.id} match={m} followedIds={followedIds} index={i} />
-                        ))}
-                      </div>
+      {!hydrated || loading ? (
+        <Spinner label="Loading fixtures…" />
+      ) : teams.length === 0 ? (
+        <EmptyState
+          title="Follow a team to see their fixtures"
+          hint="Search any club above, or quick-follow the UCL top 10. Upcoming matches and recent results will land here."
+        />
+      ) : !error && upcoming.length === 0 && results.length === 0 ? (
+        <EmptyState
+          title="No matches found for your teams"
+          hint="The free data source may be off-season for these clubs. Try Refresh matches or add another team."
+        />
+      ) : (
+        <div className="space-y-6">
+          {grouped.length > 0 && (
+            <section>
+              <h2 className="os-label mb-2 flex items-center justify-between">
+                Upcoming
+                <span className="os-mono">{upcoming.length}</span>
+              </h2>
+              <div className="space-y-5">
+                {grouped.map((g) => (
+                  <div key={g.key}>
+                    <p className="os-label-faint mb-1 flex items-center gap-2">
+                      {dayLabel(g.date)}
+                      {(isToday(g.date) || isTomorrow(g.date)) && (
+                        <span className="inline-block h-2 w-2 rounded-os bg-foreground" aria-hidden="true" />
+                      )}
+                    </p>
+                    <div>
+                      {g.matches.map((m) => (
+                        <MatchRow key={m.id} match={m} followedIds={followedIds} />
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </section>
-            )}
-            {results.length > 0 && (
-              <section>
-                <h2 className="mb-3 text-sm font-semibold text-[var(--fg-primary)]">
-                  Recent results
-                  <span className="ml-2 rounded-full bg-[var(--bg-elevated)] px-2 py-0.5 text-[10px] font-medium text-[var(--fg-muted)]">
-                    {results.length}
-                  </span>
-                </h2>
-                <div className="space-y-3">
-                  {results.map((m, i) => (
-                    <MatchCard key={m.id} match={m} followedIds={followedIds} index={i} />
-                  ))}
-                </div>
-              </section>
-            )}
-            <p className="text-center text-[11px] text-[var(--fg-subtle)]">
-              Fixture data from TheSportsDB · times shown in your local timezone
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+          {results.length > 0 && (
+            <section>
+              <h2 className="os-label mb-2 flex items-center justify-between">
+                Recent results
+                <span className="os-mono">{results.length}</span>
+              </h2>
+              <div>
+                {results.map((m) => (
+                  <MatchRow key={m.id} match={m} followedIds={followedIds} />
+                ))}
+              </div>
+            </section>
+          )}
+          <p className="os-micro">
+            Fixture data from TheSportsDB · times shown in your local timezone
+          </p>
+        </div>
+      )}
     </div>
   );
 }

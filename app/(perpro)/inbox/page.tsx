@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
+import { motion, useMotionValue, useTransform } from 'framer-motion';
 import { Button, EmptyState, ErrorBanner, PageHeader, Spinner } from '@/components/ui';
 import { InboxItem } from '@/lib/types';
 import { useTable } from '@/lib/useTable';
 import { format, parseISO } from 'date-fns';
 
+/** Touch only: the swipe is behaviour, so it stays; the spring and scale do not. */
 function useIsTouch() {
   const [isTouch, setIsTouch] = useState(false);
   useEffect(() => {
@@ -21,7 +22,6 @@ function useIsTouch() {
 
 function InboxRow({
   item,
-  index,
   bulkMode,
   selected,
   busy,
@@ -31,7 +31,6 @@ function InboxRow({
   onDismiss,
 }: {
   item: InboxItem;
-  index: number;
   bulkMode: boolean;
   selected: boolean;
   busy: boolean;
@@ -45,22 +44,28 @@ function InboxRow({
   const dismissHintOpacity = useTransform(x, [-80, -20], [1, 0]);
   const swipeable = isTouch && !bulkMode;
 
+  const actions = [
+    {
+      key: 'task' as const,
+      label: busy ? '✓ task' : '→ task',
+      onClick: () => onConvert(item, 'task'),
+      tone: 'border-line text-foreground hover:border-line-strong',
+    },
+    {
+      key: 'note' as const,
+      label: busy ? '✓ note' : '→ note',
+      onClick: () => onConvert(item, 'note'),
+      tone: 'border-line text-muted-foreground hover:border-line-strong hover:text-foreground',
+    },
+  ];
+
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 20, transition: { duration: 0.15 } }}
-      transition={{ duration: 0.3, delay: index * 0.05 }}
-      className="relative"
-    >
+    <div className="relative border-b border-line">
       {swipeable && (
-        <div className="absolute inset-0 flex items-center justify-between rounded-xl border border-[var(--fg-subtle)] bg-[var(--bg-elevated)] px-4">
-          <motion.span style={{ opacity: taskHintOpacity }} className="text-xs font-medium text-[var(--accent-brand)]">
-            → Task
-          </motion.span>
-          <motion.span style={{ opacity: dismissHintOpacity }} className="text-xs font-medium text-[var(--accent-critical)]">
-            Dismiss ←
+        <div className="os-micro absolute inset-0 flex items-center justify-between px-4">
+          <motion.span style={{ opacity: taskHintOpacity }}>→ task</motion.span>
+          <motion.span style={{ opacity: dismissHintOpacity }} className="text-danger">
+            dismiss ←
           </motion.span>
         </div>
       )}
@@ -73,111 +78,58 @@ function InboxRow({
           if (info.offset.x > 80) onConvert(item, 'task');
           else if (info.offset.x < -80) onDismiss(item);
         }}
-        whileHover={!bulkMode && !isTouch ? { x: 4 } : undefined}
-        className="relative rounded-xl border border-[var(--fg-subtle)] bg-[var(--bg-surface)] p-4 transition hover:border-[var(--accent-brand)]/50"
+        className="relative bg-background py-3"
       >
-        <AnimatePresence>
-          {bulkMode && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.5, x: -20 }}
-              animate={{ opacity: 1, scale: 1, x: 0 }}
-              exit={{ opacity: 0, scale: 0.5, x: -20 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-              className="absolute -left-3 top-1/2 -translate-y-1/2"
-            >
-              <input
-                type="checkbox"
-                checked={selected}
-                onChange={() => onToggleSelect(item.id)}
-                className="h-5 w-5 rounded border-[var(--fg-subtle)] text-[var(--accent-brand)] focus:ring-2 focus:ring-[var(--accent-brand)]"
-                aria-label="Select item"
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {bulkMode && (
+          <label className="absolute -left-1 top-1/2 -translate-y-1/2">
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={() => onToggleSelect(item.id)}
+              className="h-4 w-4 rounded-os border border-line accent-primary"
+              aria-label="Select item"
+            />
+          </label>
+        )}
 
-        <p className={`whitespace-pre-wrap text-sm text-[var(--fg-primary)] ${bulkMode ? 'pl-2' : ''}`}>{item.content}</p>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="mr-auto text-[11px] text-[var(--fg-subtle)]">
-            {format(parseISO(item.created_at), 'MMM d · h:mm a')}
+        <p className={`whitespace-pre-wrap text-[14px] text-foreground ${bulkMode ? 'pl-6' : ''}`}>
+          {item.content}
+        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <span className="os-mono mr-auto text-[11px] text-muted-foreground">
+            {format(parseISO(item.created_at), 'yyyy-MM-dd HH:mm')}
           </span>
 
           {!bulkMode && (
             <>
-              <motion.button
-                onClick={() => onConvert(item, 'task')}
-                disabled={busy}
-                whileTap={{ scale: 0.95 }}
-                whileHover={{ scale: 1.02 }}
-                className="min-h-[44px] rounded-lg bg-[var(--accent-brand)]/15 px-3 text-xs font-medium text-[var(--accent-brand)] transition hover:bg-[var(--accent-brand)]/30 disabled:opacity-50"
-              >
-                <AnimatePresence mode="wait" initial={false}>
-                  {busy ? (
-                    <motion.span
-                      key="check"
-                      initial={{ opacity: 0, scale: 0.5, rotate: -90 }}
-                      animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                      exit={{ opacity: 0, scale: 0.5, rotate: 90 }}
-                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                      className="inline-block"
-                    >
-                      ✓
-                    </motion.span>
-                  ) : (
-                    <motion.span key="arrow" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }} className="inline-block">
-                      → Task
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </motion.button>
-              <motion.button
-                onClick={() => onConvert(item, 'note')}
-                disabled={busy}
-                whileTap={{ scale: 0.95 }}
-                whileHover={{ scale: 1.02 }}
-                className="min-h-[44px] rounded-lg bg-[var(--bg-elevated)] px-3 text-xs font-medium text-[var(--fg-muted)] transition hover:bg-[var(--fg-subtle)] hover:text-[var(--fg-primary)] disabled:opacity-50"
-              >
-                <AnimatePresence mode="wait" initial={false}>
-                  {busy ? (
-                    <motion.span
-                      key="check"
-                      initial={{ opacity: 0, scale: 0.5, rotate: -90 }}
-                      animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                      exit={{ opacity: 0, scale: 0.5, rotate: 90 }}
-                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                      className="inline-block"
-                    >
-                      ✓
-                    </motion.span>
-                  ) : (
-                    <motion.span key="arrow" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }} className="inline-block">
-                      → Note
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </motion.button>
-              <motion.a
+              {actions.map((action) => (
+                <button
+                  key={action.key}
+                  onClick={action.onClick}
+                  disabled={busy}
+                  className={`os-tap-none min-h-[36px] rounded-os border px-2.5 text-[12px] transition-colors duration-150 disabled:opacity-50 ${action.tone}`}
+                >
+                  {action.label}
+                </button>
+              ))}
+              <a
                 href={`/meetings?new=1&title=${encodeURIComponent(item.content.slice(0, 80))}`}
-                whileTap={{ scale: 0.95 }}
-                whileHover={{ scale: 1.02 }}
-                className="flex min-h-[44px] items-center rounded-lg bg-[var(--bg-elevated)] px-3 text-xs font-medium text-[var(--fg-muted)] transition hover:bg-[var(--fg-subtle)] hover:text-[var(--fg-primary)]"
+                className="os-tap-none flex min-h-[36px] items-center rounded-os border border-line px-2.5 text-[12px] text-muted-foreground transition-colors duration-150 hover:border-line-strong hover:text-foreground"
               >
-                → Meeting
-              </motion.a>
-              <motion.button
+                → meeting
+              </a>
+              <button
                 onClick={() => onDismiss(item)}
                 disabled={busy}
-                whileTap={{ scale: 0.95 }}
-                whileHover={{ scale: 1.05 }}
-                className="min-h-[44px] rounded-lg px-3 text-xs text-[var(--fg-subtle)] transition hover:text-[var(--accent-critical)] disabled:opacity-50"
+                className="os-tap-none min-h-[36px] px-2 text-[12px] text-muted-foreground transition-colors duration-150 hover:text-danger disabled:opacity-50"
               >
-                Dismiss
-              </motion.button>
+                dismiss
+              </button>
             </>
           )}
         </div>
       </motion.div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -286,22 +238,18 @@ export default function InboxPage() {
   }, []);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="mx-auto max-w-3xl"
-    >
+    <div className="os-enter mx-auto max-w-3xl">
       <PageHeader
+        eyebrow="Capture"
         title="Inbox"
-        sub={bulkMode ? `${selectedIds.size} selected` : 'Everything you captured. Triage it into a task, note, or meeting — or let it go.'}
+        sub={
+          bulkMode
+            ? `${selectedIds.size} selected`
+            : 'Everything you captured. Triage it into a task, note, or meeting — or let it go.'
+        }
+        data={[`${inbox.rows.length} items`]}
         action={
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.2 }}
-            className="flex flex-wrap items-center gap-2"
-          >
+          <div className="flex flex-wrap items-center gap-2">
             {bulkMode ? (
               <>
                 <Button variant="ghost" onClick={bulkDismiss} disabled={selectedIds.size === 0 || busyId === 'bulk'}>
@@ -313,63 +261,52 @@ export default function InboxPage() {
                 <Button variant="primary" onClick={() => bulkConvert('task')} disabled={selectedIds.size === 0 || busyId === 'bulk'}>
                   → Task ({selectedIds.size})
                 </Button>
-                <motion.button
+                <button
                   onClick={() => setBulkMode(false)}
-                  whileTap={{ scale: 0.95 }}
-                  className="min-h-[44px] rounded-lg px-3 text-xs text-[var(--fg-muted)] hover:text-[var(--fg-primary)]"
+                  className="os-tap-none min-h-[36px] px-2 text-[12px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
                 >
                   Cancel
-                </motion.button>
+                </button>
               </>
             ) : (
-              <motion.button
+              <button
                 onClick={() => setBulkMode(true)}
-                whileTap={{ scale: 0.95 }}
-                whileHover={{ scale: 1.02 }}
-                className="min-h-[44px] rounded-lg px-3 text-xs text-[var(--fg-muted)] hover:text-[var(--fg-primary)]"
+                className="os-tap-none min-h-[36px] px-2 text-[12px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
               >
                 Select
-              </motion.button>
+              </button>
             )}
-          </motion.div>
+          </div>
         }
       />
-      <AnimatePresence mode="wait">
-        {(inbox.error || actionError) && <ErrorBanner message={actionError ?? inbox.error!} />}
-      </AnimatePresence>
+
+      {(inbox.error || actionError) && <ErrorBanner message={actionError ?? inbox.error!} />}
+
       {isTouch && !bulkMode && inbox.rows.length > 0 && (
-        <p className="mb-2 text-[11px] text-[var(--fg-subtle)]">Swipe right to make a task, left to dismiss.</p>
+        <p className="os-micro mb-2">Swipe right to make a task, left to dismiss.</p>
       )}
+
       {inbox.loading ? (
         <Spinner />
       ) : inbox.rows.length === 0 ? (
         <EmptyState title="Inbox zero" hint="Press Cmd+K anywhere and type to capture a thought." />
       ) : (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
-          className="space-y-2"
-          layout
-        >
-          <AnimatePresence mode="popLayout" initial={false}>
-            {inbox.rows.map((item, index) => (
-              <InboxRow
-                key={item.id}
-                item={item}
-                index={index}
-                bulkMode={bulkMode}
-                selected={selectedIds.has(item.id)}
-                busy={busyId === item.id}
-                isTouch={isTouch}
-                onToggleSelect={toggleSelect}
-                onConvert={convert}
-                onDismiss={dismiss}
-              />
-            ))}
-          </AnimatePresence>
-        </motion.div>
+        <div>
+          {inbox.rows.map((item) => (
+            <InboxRow
+              key={item.id}
+              item={item}
+              bulkMode={bulkMode}
+              selected={selectedIds.has(item.id)}
+              busy={busyId === item.id}
+              isTouch={isTouch}
+              onToggleSelect={toggleSelect}
+              onConvert={convert}
+              onDismiss={dismiss}
+            />
+          ))}
+        </div>
       )}
-    </motion.div>
+    </div>
   );
 }

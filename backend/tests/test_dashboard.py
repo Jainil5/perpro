@@ -183,7 +183,7 @@ def test_overdue_insight_clusters_by_project(session: Session, workspace_id: str
     first = payload["insights"][0]
     assert first["severity"] == "critical"
     assert first["text"] == "4 tasks are overdue"
-    assert first["href"] == "/os/tasks?filter=overdue"
+    assert first["href"] == "/tasks?filter=overdue"
     assert first["entity_id"] is None
     cluster = payload["insights"][1]
     assert "3 tasks overdue in “Big project”" == cluster["text"]
@@ -230,11 +230,11 @@ def test_stalled_past_target_empty_and_unlinked_rules(session: Session, workspac
     stalled_text = next(row for row in payload["insights"] if row["kind"] == "project_stalled")
     assert "no task activity for" in stalled_text["text"]
     assert stalled_text["entity_id"] == stalled["id"]
-    assert stalled_text["href"] == f"/os/projects/{stalled['id']}"
+    assert stalled_text["href"] == f"/projects/{stalled['id']}"
 
     goal = next(row for row in payload["insights"] if row["kind"] == "goal_past_due")
     assert "10 days past its target (20% done)" in goal["text"]
-    assert goal["href"] == "/os/goals"
+    assert goal["href"] == "/goals"
 
     note = next(row for row in payload["insights"] if row["kind"] == "unlinked_note")
     assert note["text"] == "Note “Orphan note” is linked to nothing"

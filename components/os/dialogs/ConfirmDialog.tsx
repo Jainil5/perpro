@@ -100,20 +100,31 @@ export function ConfirmDialog({
               />
             </Field>
           ) : error ? (
-            <p role="alert" className="text-xs text-destructive">
+            <p role="alert" className="text-xs text-danger">
               {error}
             </p>
           ) : null}
         </DialogBody>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>
+          <Button
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            disabled={pending}
+            className="rounded-os border border-line bg-transparent hover:bg-transparent"
+          >
             Cancel
           </Button>
+          {/* Danger is hairline + red ink, never a red fill (DESIGN §4). */}
           <Button
             variant={tone === 'destructive' ? 'destructive' : 'default'}
             onClick={() => void confirm()}
             loading={pending}
             disabled={blocked}
+            className={
+              tone === 'destructive'
+                ? 'rounded-os border border-line bg-transparent text-danger shadow-none hover:bg-transparent hover:text-danger'
+                : 'rounded-os'
+            }
           >
             {confirmLabel}
           </Button>

@@ -265,7 +265,7 @@ take an optional `project_id`: an id that does not exist in this workspace is a 
 | `completed_at` | `DATETIME` | yes | |
 | `created_at`, `updated_at`, `source` | | no | |
 
-Index `(workspace_id, status, due_at)` is the one the `/os/notifications` list uses.
+Index `(workspace_id, status, due_at)` is the one the `/notifications` list uses.
 Snoozing writes an `activity_logs` row whose `payload` carries the delta in minutes — that
 JSON column is why the engine's `json_serializer` matters.
 
@@ -280,7 +280,7 @@ JSON column is why the engine's `json_serializer` matters.
 | `title` | `VARCHAR(200)` | no | |
 | `body` | `TEXT` | yes | |
 | `entity_type`, `entity_id` | | yes | soft reference to the cause |
-| `href` | `VARCHAR(300)` | yes | in-app link, e.g. `/os/tasks?filter=overdue` (§6 "Deep links") |
+| `href` | `VARCHAR(300)` | yes | in-app link, e.g. `/tasks?filter=overdue` (§6 "Deep links") |
 | `read` | `BOOLEAN` | no | default `false` |
 | `read_at`, `resolved_at` | `DATETIME` | yes | `resolved_at` is set when the underlying condition clears |
 | `dedupe_key` | `VARCHAR(160)` | no | **unique** — the reason `POST /notifications/refresh` is idempotent |
@@ -323,37 +323,39 @@ not chronological.
 `search.groups[].items[].href` are all produced by one function —
 `app/services/links.py::href_for(entity_type, entity_id, project_id=None)` — because a stored
 href that points at a route the UI does not have is a broken link no error page will ever show.
-Nothing else in `backend/app` concatenates `/os/...`; the seeder calls the same helper.
+Nothing else in `backend/app` builds a link by hand; the seeder calls the same helper, and the
+route names live in module constants (`links.TASKS`, `links.PROJECTS`, …).
 
-The complete set of targets (`app/(os)/` is the router, so anything outside this list is a bug):
+The screens are the app's canonical routes (no prefix, no router group), so these are the only
+targets the backend may emit:
 
 | entity type | href | why |
 |---|---|---|
-| `task` | `/os/tasks?task=<id>` | the tasks screen selects a row by query parameter |
-| `note` | `/os/notes?note=<id>` | same, on the knowledge hub |
-| `contact` | `/os/contacts?contact=<id>` | people directory (companies included) |
-| `company` | `/os/contacts` | companies have no page of their own; the people page lists them |
-| `project` | `/os/projects/<id>` | the only detail route the UI has |
-| `milestone` | `/os/projects/<project_id>` | a milestone is a section of its project, never its own page |
-| `milestone` with no project | `/os/projects` | the guard: a missing `project_id` must not become `/os/projects/None` |
-| `goal` | `/os/goals` | goals have their own screen — not `/os/settings?tab=goals` |
-| `reminder`, `notification` | `/os/notifications` | that page lists both |
-| `workspace` | `/os/settings` | where a workspace is managed |
-| `activity` | `/os/activity` | |
+| `task` | `/tasks?task=<id>` | the tasks screen selects a row by query parameter |
+| `note` | `/notes?note=<id>` | same, on the knowledge hub |
+| `contact` | `/contacts?contact=<id>` | people directory (companies included) |
+| `company` | `/contacts` | companies have no page of their own; the people page lists them |
+| `project` | `/projects/<id>` | the only detail route the UI has |
+| `milestone` | `/projects/<project_id>` | a milestone is a section of its project, never its own page |
+| `milestone` with no project | `/projects` | the guard: a missing `project_id` must not become `/projects/None` |
+| `goal` | `/goals` | goals have their own screen — not `/settings?tab=goals` |
+| `reminder`, `notification` | `/notifications` | that page lists both |
+| `workspace` | `/settings` | where a workspace is managed |
+| `activity` | `/activity` | |
 | anything unknown | *(no href at all)* | `href_for` returns `None`; a link is worse than no link |
 
 Two more shapes exist, and they are the only ones outside the entity table:
 
-* saved views of the task list — `/os/tasks?filter=overdue` (the exact string API.md shows in
-  its notification example), `/os/tasks?filter=today`, `/os/tasks?filter=week`;
-* a search *group* header, which keeps API.md's `/os/tasks?q=<term>` shape (the list page for
-  that type, filtered by the term) while the *items* inside it use the entity links above —
-  which is why the companies group opens `/os/contacts?q=<term>`, not a companies page.
+* saved views of the task list — `/tasks?filter=overdue` (the shape API.md shows in its
+  notification example), `/tasks?filter=today`, `/tasks?filter=week`;
+* a search *group* header — `links.search_href(group, term)` gives that group's list page plus
+  `?q=<term>` (`/tasks?q=order`, and `/contacts?q=…` for the companies group, which has no page
+  of its own) while the *items* inside it use the entity links above.
 
-`/os/settings?tab=goals` is gone: goals have their own screen at `/os/goals`.
-`tests/test_links.py` asserts every mapping above, the missing-project case, and — across demo
-data, activity, notifications, dashboard and search — that no emitted href contains the literal
-string `None`.
+Goals have their own screen, so a goal insight never points at a settings tab.
+`tests/test_links.py` asserts every mapping above, the missing-project case, that no emitted href
+contains the literal string `None`, and that no emitted href starts with the retired screen
+prefix — a prefix reappearing anywhere in an href fails the suite.
 
 Changing a route is a one-line edit in `links.py`, plus that test file; the column stays a
 snapshot of the link as it was when the row was written (see §7), which is why the helper must

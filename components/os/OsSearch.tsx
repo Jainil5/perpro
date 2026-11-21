@@ -20,7 +20,6 @@ import { osHref } from '@/lib/os/format'
 import { useDebounced, useResource } from '@/lib/os/hooks'
 import { OS_PAGE_INDEX } from '@/lib/os/nav'
 import type { SearchResponse } from '@/lib/os/types'
-import { Badge } from './ui/badge'
 import { Dialog, DialogContent } from './ui/dialog'
 import { useOsTheme } from './os-bootstrap'
 import { useQuickCreate, type QuickKind } from './QuickCreate'
@@ -59,6 +58,9 @@ const CREATE_COMMANDS: { kind: QuickKind; label: string; search: string; icon: R
  * ⌘K palette: one input over `GET /search`, grouped results with counts,
  * keyboard navigation, plus create/navigate/toggle-theme commands. It only ever
  * reads through the API proxy — no client-side copy of the data.
+ *
+ * Rows carry no fill: the cursor row is white ink with a 2px ink left rule,
+ * everything else is muted; section titles are .os-label.
  */
 export default function OsSearch({
   open,
@@ -112,7 +114,7 @@ export default function OsSearch({
         key: `page-${page.href}`,
         group: 'Jump to',
         label: page.label,
-        hint: <span className="text-faint">{page.group}</span>,
+        hint: <span>{page.group}</span>,
         href: page.href,
       })
     }
@@ -180,12 +182,12 @@ export default function OsSearch({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         size="lg"
-        className="top-[12%] translate-y-0"
+        className="top-[12%] translate-y-0 rounded-os bg-background"
         hideClose
         aria-label="Search MyOS"
         aria-describedby={undefined}
       >
-        <div className="flex shrink-0 items-center gap-2 border-b border-line px-4">
+        <div className="flex shrink-0 items-center gap-3 border-b border-line px-4">
           <SearchIcon className="size-4 shrink-0 text-faint" />
           <input
             value={q}
@@ -213,10 +215,10 @@ export default function OsSearch({
             aria-controls="os-search-results"
             autoComplete="off"
             spellCheck={false}
-            className="h-12 w-full min-w-0 border-0 bg-transparent text-[14px] outline-none placeholder:text-faint focus:ring-0"
+            className="h-12 w-full min-w-0 border-0 bg-transparent text-[15px] text-foreground outline-none placeholder:text-faint"
           />
           {search.loading && searching ? (
-            <span className="os-mono shrink-0 text-[10px] text-faint">searching…</span>
+            <span className="os-micro shrink-0">searching…</span>
           ) : null}
         </div>
 
@@ -230,22 +232,24 @@ export default function OsSearch({
           className="os-scroll min-h-0 flex-1 overflow-y-auto px-2 py-2"
         >
           {search.error && searching ? (
-            <p className="px-3 py-6 text-xs text-destructive">
+            <p className="os-mono px-3 py-6 text-[11px] text-danger">
               {search.error.isUpstreamDown
                 ? 'The MyOS API is unreachable, so search has nothing to query.'
                 : search.error.message}
             </p>
           ) : nothingFound ? (
             <div className="px-3 py-8 text-center">
-              <p className="text-[13px] font-medium">No match for “{term}”</p>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="font-os-display text-[15px] font-medium tracking-tight text-foreground">
+                No match for “{term}”
+              </p>
+              <p className="os-micro mt-2">
                 Search covers tasks, projects, notes, milestones, contacts and companies.
               </p>
             </div>
           ) : (
             grouped.map((section) => (
               <div key={section.group} className="mb-1 last:mb-0">
-                <p className="os-eyebrow px-2 pb-1 pt-1.5">{section.group}</p>
+                <p className="os-label px-2 pb-1 pt-2">{section.group}</p>
                 {section.rows.map(({ row, index }) => (
                   <button
                     key={row.key}
@@ -257,8 +261,10 @@ export default function OsSearch({
                     onMouseMove={() => setActive(index)}
                     onClick={() => activate(row)}
                     className={cn(
-                      'flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-[13px] transition-colors',
-                      index === active ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'
+                      'flex w-full items-center gap-2.5 border-l-2 px-2 py-1.5 text-left text-[13px] transition-colors',
+                      index === active
+                        ? 'border-l-foreground text-foreground'
+                        : 'border-l-transparent text-muted-foreground'
                     )}
                   >
                     {row.icon ? (
@@ -267,16 +273,16 @@ export default function OsSearch({
                       <ArrowRight className="size-3.5 shrink-0 text-faint" />
                     )}
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-foreground">{row.label}</span>
+                      <span className="block truncate">{row.label}</span>
                       {row.hint ? (
-                        <span className="block truncate text-[11px] text-faint">{row.hint}</span>
+                        <span className="os-micro block truncate">{row.hint}</span>
                       ) : null}
                     </span>
                     {index === active ? (
-                      <Badge tone="outline" size="sm">
-                        <CornerDownLeft />
-                        <span className="os-mono">open</span>
-                      </Badge>
+                      <span className="os-micro inline-flex shrink-0 items-center gap-1.5">
+                        <CornerDownLeft className="size-3" />
+                        open
+                      </span>
                     ) : null}
                   </button>
                 ))}
@@ -285,16 +291,16 @@ export default function OsSearch({
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-3 border-t border-line px-4 py-2 text-[11px] text-faint">
-          <span className="flex items-center gap-1">
-            <kbd className="os-mono rounded border border-line px-1">↑</kbd>
-            <kbd className="os-mono rounded border border-line px-1">↓</kbd> navigate
+        <div className="os-micro flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-t border-line px-4 py-2">
+          <span className="inline-flex items-center gap-1">
+            <kbd className="os-mono rounded-os border border-line px-1">↑</kbd>
+            <kbd className="os-mono rounded-os border border-line px-1">↓</kbd> navigate
           </span>
-          <span className="flex items-center gap-1">
-            <kbd className="os-mono rounded border border-line px-1">↵</kbd> open
+          <span className="inline-flex items-center gap-1">
+            <kbd className="os-mono rounded-os border border-line px-1">↵</kbd> open
           </span>
-          <span className="flex items-center gap-1">
-            <kbd className="os-mono rounded border border-line px-1">esc</kbd> close
+          <span className="inline-flex items-center gap-1">
+            <kbd className="os-mono rounded-os border border-line px-1">esc</kbd> close
           </span>
           {search.data?.total ? (
             <span className="ml-auto">

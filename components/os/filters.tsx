@@ -7,50 +7,53 @@ import { cn } from '@/lib/os/cn'
 import { enumLabel } from '@/lib/os/format'
 import { Option, Select, SelectContent, SelectTrigger, SelectValue } from './ui/select'
 
-/** Pill toggle used by every list screen's filter row. */
+/**
+ * Filter toggle used by every list screen's filter row (and the saved-view
+ * presets behind ?filter=…). Selected state is white ink + ink hairline —
+ * never a filled pill. `tone` is accepted for call-site compatibility but no
+ * longer paints: hue is reserved for row state, not for filter chrome.
+ */
 export function FilterChip({
   active,
   onClick,
   children,
   count,
-  tone = 'primary',
+  tone,
 }: {
   active: boolean
   onClick: () => void
   children: ReactNode
   count?: number
+  /** @deprecated kept for call-sites; selected filters are ink + hairline now */
   tone?: 'primary' | 'danger' | 'warning'
 }) {
-  const activeTone =
-    tone === 'danger'
-      ? 'border-destructive/40 bg-destructive/12 text-destructive'
-      : tone === 'warning'
-        ? 'border-warning/40 bg-warning/12 text-warning'
-        : 'border-primary/40 bg-primary/12 text-primary'
+  void tone
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'inline-flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'inline-flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-os border px-2.5 text-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground',
         active
-          ? activeTone
-          : 'border-line bg-card text-muted-foreground hover:border-line-strong hover:text-foreground'
+          ? 'border-foreground text-foreground'
+          : 'border-line text-muted-foreground hover:border-line-strong hover:text-foreground'
       )}
     >
       {children}
-      {count != null ? <span className={cn('os-num text-faint')}>{count}</span> : null}
+      {count != null ? (
+        <span className={cn('os-mono', active ? 'text-foreground' : 'text-faint')}>{count}</span>
+      ) : null}
     </button>
   )
 }
 
-/** Toolbar wrapper: wraps on mobile, keeps a single line on desktop. */
+/** Toolbar wrapper: wraps on mobile, closed by a hairline on desktop. */
 export function FilterBar({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <div
       className={cn(
-        'flex flex-wrap items-center gap-2 rounded-xl border border-line bg-card/60 px-2.5 py-2',
+        'flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-2 border-b border-line pb-2.5',
         className
       )}
     >
@@ -59,7 +62,8 @@ export function FilterBar({ children, className }: { children: ReactNode; classN
   )
 }
 
-/** Compact search box that is part of a filter row. */
+/** Compact search box that is part of a filter row — a bare input, so the
+ *  token CSS gives it the transparent + bottom-hairline treatment for free. */
 export function InlineSearch({
   value,
   onChange,
@@ -80,14 +84,14 @@ export function InlineSearch({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         aria-label={placeholder}
-        className="os-tap-none h-8 w-full min-w-0 rounded-lg border border-line bg-input pl-8 pr-7 text-xs text-foreground outline-none transition-colors placeholder:text-faint focus-visible:ring-2 focus-visible:ring-ring"
+        className="os-tap-none h-8 w-full min-w-0 rounded-none pl-8 pr-7 text-xs text-foreground"
       />
       {value ? (
         <button
           type="button"
           onClick={() => onChange('')}
           aria-label="Clear search"
-          className="os-tap-none absolute right-1.5 grid size-5 place-items-center rounded text-faint hover:bg-accent hover:text-foreground"
+          className="os-tap-none absolute right-1 grid size-5 place-items-center text-faint transition-colors hover:text-foreground"
         >
           <X className="size-3" />
         </button>
@@ -113,7 +117,7 @@ export function SortSelect({
       <ArrowUp className="size-3.5 text-faint" aria-hidden />
       <span className="sr-only">{label}</span>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger size="sm" className="w-[7.5rem]" aria-label={label}>
+        <SelectTrigger size="sm" aria-label={label} className="w-[7.5rem] rounded-os">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -128,7 +132,10 @@ export function SortSelect({
   )
 }
 
-/** List / board / table switch used by Tasks and Project detail. */
+/**
+ * List / board / table switch used by Tasks and Project detail. The selected
+ * view is white ink sitting on an ink hairline underline — no filled segment.
+ */
 export function ViewToggle({
   value,
   onChange,
@@ -139,7 +146,11 @@ export function ViewToggle({
   options: { value: string; label: string; icon: ReactNode }[]
 }) {
   return (
-    <div role="tablist" aria-label="View" className="flex shrink-0 items-center gap-1 rounded-lg border border-line bg-muted/60 p-1">
+    <div
+      role="tablist"
+      aria-label="View"
+      className="flex shrink-0 items-stretch gap-3 border-b border-line"
+    >
       {options.map((option) => (
         <button
           key={option.value}
@@ -149,10 +160,10 @@ export function ViewToggle({
           onClick={() => onChange(option.value)}
           title={option.label}
           className={cn(
-            'os-tap-none inline-flex h-6 items-center gap-1.5 rounded-md px-2 text-[11px] font-medium transition-colors',
+            'os-tap-none -mb-px inline-flex h-7 items-center gap-1.5 border-b px-0.5 text-[11px] transition-colors',
             value === option.value
-              ? 'bg-card text-foreground shadow-os'
-              : 'text-muted-foreground hover:text-foreground'
+              ? 'border-foreground text-foreground'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
           )}
         >
           <span className="[&_svg]:size-3.5">{option.icon}</span>
@@ -182,8 +193,8 @@ export function LoadMore({
   const remaining = Math.max(0, total - loaded)
   if (total <= 0) return null
   return (
-    <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-muted-foreground">
-      <span className="os-num">
+    <div className="flex min-w-0 flex-wrap items-center gap-3 pt-1">
+      <span className="os-mono text-[11px] text-muted-foreground">
         {Math.min(loaded, total)} of {total}
         {remaining > 0 ? ` · ${remaining} more` : ' · all loaded'}
       </span>
@@ -192,7 +203,7 @@ export function LoadMore({
           type="button"
           onClick={onMore}
           disabled={loading}
-          className="os-tap-none inline-flex h-7 items-center gap-1.5 rounded-lg border border-line px-2.5 text-xs transition-colors hover:bg-accent disabled:opacity-50"
+          className="os-tap-none inline-flex h-7 items-center gap-1.5 rounded-os border border-line px-2.5 text-xs text-muted-foreground transition-colors hover:border-line-strong hover:text-foreground disabled:opacity-50"
         >
           <ArrowDown className="size-3.5" />
           Load {Math.min(size, remaining)} more
@@ -202,7 +213,7 @@ export function LoadMore({
         <button
           type="button"
           onClick={onReset}
-          className="os-tap-none inline-flex h-7 items-center rounded-lg px-2 text-xs text-faint transition-colors hover:bg-accent hover:text-foreground"
+          className="os-tap-none inline-flex h-7 items-center rounded-os px-1 text-xs text-faint transition-colors hover:text-foreground"
         >
           Back to top
         </button>

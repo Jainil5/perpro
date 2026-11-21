@@ -60,7 +60,7 @@ export function QuickCreateProvider({ children }: { children: ReactNode }) {
       // Import lives on the tasks screen so its result can refresh that list.
       if (kind === 'import') {
         const projectId = (defaults as { project_id?: string | null } | undefined)?.project_id
-        router.push(projectId ? `/os/tasks?import=1&project=${projectId}` : '/os/tasks?import=1')
+        router.push(projectId ? `/tasks?import=1&project=${projectId}` : '/tasks?import=1')
         setEntry(null)
         return
       }
@@ -100,7 +100,7 @@ export function QuickCreateProvider({ children }: { children: ReactNode }) {
               }
             : undefined
         }
-        onSaved={(note) => router.push(`/os/notes?note=${note.id}`)}
+        onSaved={(note) => router.push(`/notes?note=${note.id}`)}
       />
       <ContactDialog
         open={entry?.kind === 'contact'}
@@ -120,12 +120,12 @@ export function QuickCreateProvider({ children }: { children: ReactNode }) {
               }
             : undefined
         }
-        onSaved={(contact) => router.push(`/os/contacts?contact=${contact.id}`)}
+        onSaved={(contact) => router.push(`/contacts?contact=${contact.id}`)}
       />
       <ReminderDialog
         open={entry?.kind === 'reminder'}
         onOpenChange={(next) => (next ? undefined : close())}
-        onSaved={() => router.push('/os/notifications')}
+        onSaved={() => router.push('/notifications')}
       />
     </QuickCreateContext.Provider>
   )

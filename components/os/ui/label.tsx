@@ -7,18 +7,15 @@ import { cn } from '@/lib/os/cn'
 
 type LabelProps = ComponentPropsWithoutRef<typeof LabelPrimitive.Root> & { hint?: ReactNode }
 
+/** Every form label is the `.os-label` micro-label from app/os.css. */
 export function Label({ className, children, hint, ...props }: LabelProps) {
   return (
-    <LabelPrimitive.Root
-      className={cn(
-        'flex items-baseline gap-2 font-os-display text-[11px] font-semibold uppercase tracking-wide text-muted-foreground',
-        className
-      )}
-      {...props}
-    >
+    <LabelPrimitive.Root className={cn('os-label flex items-baseline gap-2', className)} {...props}>
       <span>{children}</span>
       {hint ? (
-        <span className="font-os-body text-[10px] font-normal normal-case tracking-normal text-faint">{hint}</span>
+        <span className="font-os-body text-[10px] font-normal normal-case tracking-normal text-faint">
+          {hint}
+        </span>
       ) : null}
     </LabelPrimitive.Root>
   )
@@ -50,7 +47,7 @@ export function Field({
       </Label>
       {children}
       {error ? (
-        <p role="alert" className="text-[11px] normal-case tracking-normal text-destructive">
+        <p role="alert" className="os-mono text-[11px] leading-snug text-destructive">
           {error}
         </p>
       ) : null}

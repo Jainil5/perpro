@@ -1,19 +1,25 @@
-"""Deep links: the only place that knows how the MyOS frontend is addressed.
+"""Deep links: the only place that knows how the frontend is addressed.
 
 Every ``href`` the backend emits - activity rows, notifications, dashboard insights,
 search results, demo data - is built here, so a route change is a one-line edit in this
 module instead of a hunt through five services.
 
+MyOS screens are the app's canonical routes: ``/tasks``, ``/notes``, ``/contacts``,
+``/projects``, ``/goals``, ``/notifications``, ``/activity``, ``/settings``, ``/search``,
+and the dashboard at ``/``.  The legacy prefixed aliases those screens used to live under are
+gone; nothing in this module may bring one back, and ``tests/test_links.py`` fails if any
+emitted href does.
+
 The rules, all of them enforced by :func:`href_for`:
 
 * a screen that selects one object does it with a **query parameter**
-  (``/os/tasks?task=…``, ``/os/notes?note=…``, ``/os/contacts?contact=…``); only
-  projects have a detail route of their own (``/os/projects/<id>``);
+  (``/tasks?task=…``, ``/notes?note=…``, ``/contacts?contact=…``); only
+  projects have a detail route of their own (``/projects/<id>``);
 * a milestone opens **its project** - there is no milestone page;
 * entities with no detail screen at all - goals, reminders, notifications, companies,
   workspaces - link to the list page that shows them;
 * a missing id never leaks into a URL: ``href_for("milestone", mid, project_id=None)``
-  is ``/os/projects``, not ``/os/projects/None``.  The guard lives here rather than at
+  is ``/projects``, not ``/projects/None``.  The guard lives here rather than at
   every call site, so it cannot be forgotten;
 * an entity type we do not know yields ``None`` - no link is better than a wrong one.
 
@@ -26,17 +32,17 @@ from __future__ import annotations
 from typing import Final
 from urllib.parse import quote
 
-OS_ROOT: Final = "/os"
-ACTIVITY: Final = f"{OS_ROOT}/activity"
-CONTACTS: Final = f"{OS_ROOT}/contacts"
-GOALS: Final = f"{OS_ROOT}/goals"
-NOTES: Final = f"{OS_ROOT}/notes"
-NOTIFICATIONS: Final = f"{OS_ROOT}/notifications"
-PROJECTS: Final = f"{OS_ROOT}/projects"
-SETTINGS: Final = f"{OS_ROOT}/settings"
-TASKS: Final = f"{OS_ROOT}/tasks"
+ACTIVITY: Final = "/activity"
+CONTACTS: Final = "/contacts"
+GOALS: Final = "/goals"
+NOTES: Final = "/notes"
+NOTIFICATIONS: Final = "/notifications"
+PROJECTS: Final = "/projects"
+SEARCH: Final = "/search"
+SETTINGS: Final = "/settings"
+TASKS: Final = "/tasks"
 
-#: saved views of the task list (``/os/tasks?filter=overdue`` is the shape API.md shows)
+#: saved views of the task list (``/tasks?filter=overdue`` is the shape the UI knows)
 TASKS_OVERDUE: Final = f"{TASKS}?filter=overdue"
 TASKS_DUE_TODAY: Final = f"{TASKS}?filter=today"
 TASKS_DUE_WEEK: Final = f"{TASKS}?filter=week"
@@ -70,6 +76,18 @@ _ALIASES: Final[dict[str, str]] = {
     "tasks": "task",
     "users": "workspace",
     "workspaces": "workspace",
+}
+
+
+#: search group -> the canonical list page its header links to.  Companies have no page
+#: of their own, so both people groups open ``/contacts``.
+_SEARCH_PAGES: Final[dict[str, str]] = {
+    "tasks": TASKS,
+    "projects": PROJECTS,
+    "notes": NOTES,
+    "milestones": PROJECTS,
+    "contacts": CONTACTS,
+    "companies": CONTACTS,
 }
 
 
@@ -111,6 +129,12 @@ def href_for(
     return f"{page}?{parameter}={ident}"
 
 
-def search_href(page: str, query: str) -> str:
-    """The "show me the whole list for this term" link every search group carries."""
+def search_href(group: str, query: str) -> str:
+    """``/tasks?q=order`` - the list page a search group's header links to, filtered.
+
+    Takes the group name (``tasks``, ``milestones``, ``companies``, …) so the route stays
+    in this module; a value that already looks like a path is used as-is.
+    """
+    key = str(group).strip().lower()
+    page = _SEARCH_PAGES.get(key, group)
     return f"{page}?q={quote((query or '').strip(), safe='')}"

@@ -13,7 +13,6 @@ from app.services import search
 from tests.helpers import make_project, make_task, other_workspace
 
 DAY = dt.date(2026, 11, 21)
-BASE = "/os"
 
 
 def groups_by_type(payload: dict) -> dict[str, list[str]]:
@@ -119,10 +118,10 @@ def test_items_carry_href_badge_and_subtitle(session: Session, workspace_id: str
     payload = search.search(session, workspace_id, query="order", today=DAY)
     group = payload["groups"][0]
     assert group["label"] == "Tasks"
-    assert group["href"].startswith(f"{BASE}/tasks?q=")
+    assert group["href"] == "/tasks?q=order"
     item = group["items"][0]
     assert item["id"] == overdue["id"]
-    assert item["href"] == f"{BASE}/tasks?task={overdue['id']}"
+    assert item["href"] == f"/tasks?task={overdue['id']}"
     assert item["subtitle"] == "OrderBook"
     assert item["badge"] == "overdue"
 

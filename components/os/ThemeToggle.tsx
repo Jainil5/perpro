@@ -1,9 +1,10 @@
 'use client'
 
-import { Monitor, Moon, Sun } from 'lucide-react'
+import { Monitor } from 'lucide-react'
 import { useId } from 'react'
 
 import { cn } from '@/lib/os/cn'
+import { HalfDisc } from './marks'
 import { IconButton } from './ui/button'
 import {
   DropdownMenu,
@@ -20,6 +21,13 @@ const OPTIONS: { theme: OsTheme; label: string; hint: string }[] = [
   { theme: 'light', label: 'Light', hint: 'For bright rooms and printing' },
 ]
 
+/**
+ * The theme control as the reference's half-disc: one circle, half ink, half
+ * void, sitting on the header hairline. It is the only place the two themes are
+ * ever shown at once, so no Sun/Moon glyph is needed. The menu keeps Radix's
+ * keyboard contract; the chosen theme is named in the accessible label and the
+ * tooltip, and marked in the list with ink + `aria-current` rather than a pill.
+ */
 export default function ThemeToggle({ className }: { className?: string }) {
   const [theme, setTheme] = useOsTheme()
   const id = useId()
@@ -30,27 +38,25 @@ export default function ThemeToggle({ className }: { className?: string }) {
         <IconButton
           label={`Theme: ${theme}. Change appearance`}
           variant="ghost"
-          className={cn('text-muted-foreground', className)}
+          className={cn('text-muted-foreground hover:text-foreground', className)}
         >
-          {theme === 'light' ? <Sun className="size-4" /> : <Moon className="size-4" />}
+          <HalfDisc className="shrink-0" />
         </IconButton>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" aria-labelledby={id} className="w-52">
+      <DropdownMenuContent align="end" aria-labelledby={id} className="w-56">
         <DropdownMenuLabel id={id}>Appearance</DropdownMenuLabel>
-        {OPTIONS.map((option) => {
-          const Icon = option.theme === 'light' ? Sun : Moon
-          return (
-            <DropdownMenuItem
-              key={option.theme}
-              onSelect={() => setTheme(option.theme)}
-              className={cn(theme === option.theme && 'bg-accent text-accent-foreground')}
-            >
-              <Icon />
-              <span className="flex-1">{option.label}</span>
-              <span className="text-[11px] text-faint">{option.hint}</span>
-            </DropdownMenuItem>
-          )
-        })}
+        {OPTIONS.map((option) => (
+          <DropdownMenuItem
+            key={option.theme}
+            onSelect={() => setTheme(option.theme)}
+            aria-current={theme === option.theme ? 'true' : undefined}
+            className={cn(theme === option.theme && 'text-foreground')}
+          >
+            <HalfDisc className={cn('shrink-0', option.theme === 'light' && 'rotate-180')} />
+            <span className="flex-1">{option.label}</span>
+            <span className="os-micro max-w-[7rem] truncate">{option.hint}</span>
+          </DropdownMenuItem>
+        ))}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onSelect={() => {

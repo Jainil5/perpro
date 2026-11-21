@@ -200,40 +200,59 @@ export function truncate(value: string, max = 60): string {
 
 /** Record pages that address one row with a query param instead of a path segment. */
 const OS_RECORD_PARAMS: Record<string, { page: string; param: string }> = {
-  tasks: { page: '/os/tasks', param: 'task' },
-  notes: { page: '/os/notes', param: 'note' },
-  contacts: { page: '/os/contacts', param: 'contact' },
+  tasks: { page: '/tasks', param: 'task' },
+  notes: { page: '/notes', param: 'note' },
+  contacts: { page: '/contacts', param: 'contact' },
 }
 
 /**
- * The app has exactly one link scheme (see docs/MYOS/API.md: notification and
- * activity rows carry `href`s like `/os/tasks?filter=overdue`). The API has so
- * far emitted three other shapes, so every href coming back from the server is
- * normalised before it is rendered:
+ * ONE APP, ONE LINK SCHEME
  *
- *   `/os/tasks/<id>`                → `/os/tasks?task=<id>`
- *   `/os/notes/<id>`                → `/os/notes?note=<id>`
- *   `/os/contacts/<id>`             → `/os/contacts?contact=<id>`
- *   `/os/settings?tab=goals`        → `/os/goals`      (goals have their own page)
+ * Canonical routes are un-prefixed: `/`, `/tasks`, `/projects/<id>`, `/notes`,
+ * `/inbox`, `/legacy/tasks`, … (see docs/MYOS/ARCHITECTURE.md §2). MyOS used to
+ * live under `/os/*`; the Next.js `redirects()` table covers the browser, but
+ * rows already stored in SQLite and any backend that has not been redeployed
+ * still hand back the old `/os/…` strings, because `links.py` emits hrefs from
+ * the database too. This function is the permanent safety net for that:
  *
- * Anything else — `/os/projects/<id>`, `/os/search?q=…` — is already canonical
- * and passes through untouched.
+ *   1. it accepts BOTH forms. A `/os/…` href has the legacy prefix dropped, an
+ *      already-canonical href is passed through untouched;
+ *   2. it normalises the odd shapes the API has produced so far:
+ *
+ *        `/os/tasks/<id>`  and  `/tasks/<id>`   → `/tasks?task=<id>`
+ *        `/os/notes/<id>`  and  `/notes/<id>`   → `/notes?note=<id>`
+ *        `/os/contacts/<id>` → `/contacts?contact=<id>`
+ *        `/os/settings?tab=goals` → `/goals`    (goals have their own page)
+ *
+ *   3. anything else — `/projects/<id>`, `/search?q=…`, `/tasks?filter=overdue`
+ *      — is already canonical and passes through with its query intact.
+ *
+ * Do not delete this when `backend/app/services/links.py` is updated to emit
+ * canonical hrefs: old notification/activity rows keep their stored links
+ * forever, and the normaliser is what makes them resolve.
  */
 export function osHref(href: string): string
 export function osHref(href?: string | null): string | null
 export function osHref(href?: string | null): string | null {
-  if (!href || !href.startsWith('/os/')) return href ?? null
-  const cut = href.indexOf('?')
-  const path = cut === -1 ? href : href.slice(0, cut)
-  const query = new URLSearchParams(cut === -1 ? '' : href.slice(cut + 1))
+  if (!href) return href ?? null
 
-  if (path === '/os/settings' && query.get('tab') === 'goals') return '/os/goals'
+  // 1. strip the retired `/os` prefix, leaving anything else untouched.
+  let canonical = href
+  if (canonical === '/os' || canonical.startsWith('/os/')) canonical = canonical.slice(3) || '/'
+  if (!canonical.startsWith('/')) return canonical
 
+  const cut = canonical.indexOf('?')
+  const path = cut === -1 ? canonical : canonical.slice(0, cut)
+  const query = new URLSearchParams(cut === -1 ? '' : canonical.slice(cut + 1))
+
+  if (path === '/settings' && query.get('tab') === 'goals') return '/goals'
+
+  // 2. `/tasks/<id>` style record links become a query param on the list page.
   const segments = path.split('/').filter(Boolean)
-  const record = segments.length === 3 ? OS_RECORD_PARAMS[segments[1]] : undefined
-  if (!record || !segments[2]) return href
+  const record = segments.length === 2 ? OS_RECORD_PARAMS[segments[0]] : undefined
+  if (!record || !segments[1]) return canonical
 
-  query.set(record.param, segments[2])
+  query.set(record.param, segments[1])
   const search = query.toString()
   return `${record.page}${search ? `?${search}` : ''}`
 }

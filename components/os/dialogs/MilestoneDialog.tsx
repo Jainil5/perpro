@@ -122,7 +122,7 @@ export function MilestoneDialog({
           {banner ? (
             <p
               role="alert"
-              className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+              className="rounded-os border border-line px-3 py-2 text-xs text-danger"
             >
               {banner}
             </p>
@@ -172,10 +172,15 @@ export function MilestoneDialog({
           </Field>
         </DialogBody>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>
+          <Button
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            disabled={pending}
+            className="rounded-os border border-line bg-transparent hover:bg-transparent"
+          >
             Cancel
           </Button>
-          <Button onClick={() => void submit()} loading={pending}>
+          <Button onClick={() => void submit()} loading={pending} className="rounded-os">
             {editing ? 'Save milestone' : 'Create milestone'}
           </Button>
         </DialogFooter>

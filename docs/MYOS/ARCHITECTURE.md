@@ -1,14 +1,35 @@
 # MyOS — Architecture
 
-MyOS is a modular personal + business operating system. It lives in this repository next to the
-existing PerPro app and is reachable at `/os`.
+MyOS is a modular personal + business operating system. It is not a separate app: **PerPro *is*
+the OS**, and the MyOS screens hold the canonical URLs (`/`, `/tasks`, `/projects`, `/notes`, …).
+The original PerPro Supabase screens that those three engines duplicated are preserved, untouched,
+under `/legacy/*`. There is one Next.js app, one shell and one route tree.
+
+## 0. Route map
+
+| URL | Screen | Store |
+|---|---|---|
+| `/` | Personal dashboard (MyOS `DashboardView`) | FastAPI + SQLite |
+| `/tasks`, `/projects`, `/projects/[id]`, `/notes` | MyOS task / project / knowledge screens | FastAPI + SQLite |
+| `/contacts`, `/goals` | People, Goals | FastAPI + SQLite |
+| `/search`, `/notifications`, `/activity`, `/settings`, `/roadmap` | System screens | FastAPI + SQLite |
+| `/inbox`, `/meetings`, `/news` | PerPro-only screens (never duplicated) | Supabase via `/api/db/*` |
+| `/legacy` | Index of the preserved Supabase screens | Supabase |
+| `/legacy/today`, `/legacy/tasks`, `/legacy/projects`, `/legacy/projects/[id]`, `/legacy/notes` | The five original PerPro screens | Supabase via `/api/db/*` |
+
+`next.config.mjs` issues **308 redirects** for the retired prefix: `/os` → `/` and
+`/os/:path*` → `/:path*`. No `app/(os)` route folder exists any more. Because rows already in
+SQLite (and any backend that has not been redeployed) still carry stored `/os/…` hrefs,
+`osHref()` in `lib/os/format.ts` normalises both forms at render time — that normaliser is
+permanent, not a migration shim.
 
 ## 1. Shape of the system
 
 ```
 ┌────────────────────────── browser ──────────────────────────┐
 │  Next.js 15 App Router (TypeScript, Tailwind, shadcn/ui)    │
-│  app/(os)/…  /os  /os/projects  /os/tasks  /os/notes  …     │
+│  app/(perpro)/…  /  /tasks  /projects  /notes  /legacy/…    │
+│  components/Shell.tsx — the one chrome, nav from lib/os/nav │
 └───────────────┬───────────────────────────────┬─────────────┘
                 │ typed client lib/os/*         │ route handlers
                 ▼                               ▼
@@ -30,27 +51,39 @@ existing PerPro app and is reachable at `/os`.
 ## 2. Repository layout
 
 ```
-app/(perpro)/…        existing PerPro routes, moved into a route group so MyOS can have its
-                      own shell. URLs are unchanged (/, /tasks, /projects, /notes, …).
-app/(os)/layout.tsx   MyOS shell: sidebar, top bar, global search, quick create, theme
-app/(os)/os/page.tsx              dashboard (PERSONAL → Overview)
-app/(os)/os/projects/page.tsx     project list
-app/(os)/os/projects/[id]/page.tsx project detail: next action, tasks, milestones
-app/(os)/os/tasks/page.tsx        all tasks: list + kanban, filters
-app/(os)/os/notes/page.tsx        knowledge hub: categories, tags, markdown editor
-app/(os)/os/contacts/page.tsx     contacts + companies (people directory)
-app/(os)/os/search/page.tsx       global search results
-app/(os)/os/notifications/page.tsx      unified notifications + reminders
-app/(os)/os/settings/page.tsx     workspace, theme, demo data, export, API status
-app/(os)/os/roadmap/page.tsx      honest phase tracker for not-yet-built modules
+app/layout.tsx        <html>/<body>, globals.css
+app/(perpro)/layout.tsx  one layout for the whole app: theme script, os.css, metadata
+app/(perpro)/page.tsx              dashboard (PERSONAL → Today), mounts DashboardView
+app/(perpro)/DashboardView.tsx     the dashboard itself (not a route, just colocated)
+app/(perpro)/projects/page.tsx     project list
+app/(perpro)/projects/[id]/page.tsx project detail: next action, tasks, milestones
+app/(perpro)/tasks/page.tsx        all tasks: list + kanban, filters
+app/(perpro)/notes/page.tsx        knowledge hub: categories, tags, markdown editor
+app/(perpro)/contacts/page.tsx     contacts + companies (people directory)
+app/(perpro)/goals/page.tsx        goals
+app/(perpro)/search/page.tsx       global search results
+app/(perpro)/notifications/page.tsx      unified notifications + reminders
+app/(perpro)/settings/page.tsx     workspace, theme, demo data, export, API status
+app/(perpro)/roadmap/page.tsx      honest phase tracker for not-yet-built modules
+app/(perpro)/inbox|meetings|news   PerPro screens, still Supabase, unchanged
+app/(perpro)/legacy/page.tsx       index of the preserved Supabase screens
+app/(perpro)/legacy/{today,tasks,projects,projects/[id],notes}
+                      the five original PerPro Supabase screens; each carries a
+                      LegacyBanner pointing at its live equivalent
 app/api/os/[...path]/route.ts     proxy to FastAPI
+app/os.css            the `.os-root` token contract (imported by the layout)
 
+components/Shell.tsx  the single chrome: grouped sidebar (desktop) / top bar +
+                      slide-over drawer (mobile), ⌘K palette, toasts, quick create
+components/CommandPalette.tsx  ⌘K: destinations come from lib/os/nav, capture → Inbox
+components/LegacyBanner.tsx    hairline notice on the /legacy/* screens
 components/os/ui/*    shadcn/ui primitives (button, card, dialog, input, select, tabs, …)
-components/os/*       MyOS app components (sidebar, topbar, task rows, modals, widgets)
+components/os/*       MyOS app components (task rows, dialogs, widgets, search palette)
+lib/os/nav.ts         the nav model: PERSONAL / FINANCE / BUSINESS / SYSTEM
 lib/os/client.ts      typed fetch wrapper + error normalisation
 lib/os/hooks.ts       useResources/useCreate/useUpdate/useDelete (loading/error/empty state)
 lib/os/types.ts       TS mirrors of the API payloads
-lib/os/format.ts      date/currency/relative-time helpers
+lib/os/format.ts      date/currency/relative-time helpers + osHref() link normaliser
 
 backend/app/main.py   app factory, router registration, health
 backend/app/core/     config (env), db engine/session, errors
@@ -79,27 +112,50 @@ docs/MYOS/            ARCHITECTURE.md, API.md, DATA_MODEL.md
 * Money, dates and percentages are computed in Python, never in SQL string manipulation.
 
 **Frontend**
-* Client components under `app/(os)`; no server-side data fetching (the API is local-first and
-  the same data must work offline-ish with instant revalidation).
+* Client components under `app/(perpro)`; no server-side data fetching (the API is local-first and
+  the same data must work offline-ish with instant revalidation). Each route folder keeps its
+  `page.tsx` plus a colocated `<Name>View.tsx`; only `page.tsx` becomes a URL.
+* One chrome only: `components/Shell.tsx`. It renders `lib/os/nav.ts` in the desktop sidebar and in
+  the mobile slide-over drawer, mounts the ⌘K palette, the quick-create dialogs and the toast layer.
 * Every screen renders four states: loading, empty, error, data.
 * Tailwind tokens come from CSS variables so light/dark is a class swap, not a rewrite.
 * Reuse `components/os/ui/*`; never inline a one-off button style.
+* Never hard-code an `/os/...` href: routes are canonical (`/tasks`, `/projects/<id>`, …) and any
+  href that arrives from the API goes through `osHref()`.
 
 ## 4. Theming
 
-`app/(os)/layout.tsx` mounts `<div class="os-root">` (dark) or `<div class="os-root os-light">`
-with the choice persisted in `localStorage` under `myos.theme` and initialised from
-`prefers-color-scheme`. MyOS token variables (`--os-*`) are defined **inside** `.os-root`
-(see `app/os.css`) so the PerPro design tokens in `app/globals.css` are untouched.
-Tailwind maps the tokens to semantic utilities (`bg-card`, `text-muted-foreground`,
-`border-os`, …) exactly like shadcn/ui does.
+There is a single shell, so the token contract lives there: `app/(perpro)/layout.tsx` imports
+`app/os.css` and renders the `OsThemeScript` before the markup, then `components/Shell.tsx` mounts
+`<div class="os-root">` (dark) or `<div class="os-root os-light">` on the shell root, driven by
+`useOsTheme()` in `components/os/os-bootstrap.tsx`. The choice is persisted in `localStorage` under
+`myos.theme` and initialised from `prefers-color-scheme`; the same classes are mirrored onto `<html>`
+before paint, so neither the MyOS screens nor the Supabase screens flash on load.
+
+The language itself is specified in [docs/DESIGN.md](../DESIGN.md) — measured from the reference the
+owner chose (near-black `#0F1012` canvas, white ink, hairlines instead of cards, 2px radius, no
+shadows or blur, colour reserved for overdue / done / due-today, sentence-case display type, 11px
+uppercase micro-labels, monospace for every number and date). Three things implement it:
+
+* `app/os.css` — the `--os-*` variables plus the motif classes (`.os-grid`, `.os-disc`, `.os-dial`,
+  `.os-dot`, `.os-panel`, `.os-label`, `.os-title`, `.os-display`, `.os-mono`, `.os-micro`).
+* `tailwind.config.ts` — maps them to semantic utilities (`bg-card`, `text-muted-foreground`,
+  `border-line`, `text-danger`, …) exactly like shadcn/ui does, pins the default `border`/`divide`
+  colour to the hairline (so components never need `!border-*` hacks), and holds
+  `rounded-os-lg`/`shadow-os` at the spec values so a leftover utility cannot reintroduce cards.
+* `app/globals.css` — PerPro's original variable names and `.text-*` utilities, now resolving to the
+  same tokens, so the Supabase screens inherit the language instead of competing with it.
+
+`components/os/marks.tsx` is the single implementation of the three ornaments the design allows
+(disc, bounded hairline grid, monospace corner micro-data, plus `Dial`/`HairlineBar`/`StatusDot`/
+`Clock`). Screens compose from it; they do not hand-roll a disc, a grid, a dial or a clock.
 
 ## 5. AI (optional by design)
 
-`backend/app/services/assistant.py` talks to an OpenAI-compatible endpoint or Ollama chosen by
-`MYOS_AI_PROVIDER`. If `MYOS_AI_ENABLED=0` (default) every AI affordance degrades to a
-deterministic local fallback: the UI shows rule-based insights and the assistant panel explains
-how to switch it on. No core screen depends on a model being available. When enabled, tool
+Phase 6 adds `backend/app/services/assistant.py`, talking to an OpenAI-compatible endpoint or Ollama
+chosen by `MYOS_AI_PROVIDER`. Today `MYOS_AI_ENABLED=0` in every environment and no MyOS screen
+depends on a model: the UI shows rule-based insights and the assistant panel explains how to switch
+it on. When enabled, tool
 calls operate through the same services the UI uses, so the assistant can only do what the
 database already allows, and consequential actions require an explicit confirmation step.
 

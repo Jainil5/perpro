@@ -25,15 +25,15 @@ from app.models.enums import TaskStatus
 from app.schemas.results import SEARCH_GROUP_LABELS, SEARCH_GROUP_ORDER
 from app.services import crud, links
 
-#: group -> (model, columns searched, the list page the group header links to).
-#: Companies have no screen of their own: the people page shows both.
-_SEARCH_MODELS: dict[str, tuple[type, tuple[Any, ...], str]] = {
-    "tasks": (Task, (Task.title, Task.description, Task.notes), links.TASKS),
-    "projects": (Project, (Project.name, Project.description, Project.next_action), links.PROJECTS),
-    "notes": (Note, (Note.title, Note.content), links.NOTES),
-    "milestones": (Milestone, (Milestone.title, Milestone.description), links.PROJECTS),
-    "contacts": (Contact, (Contact.name, Contact.title, Contact.notes), links.CONTACTS),
-    "companies": (Company, (Company.name, Company.industry, Company.notes), links.CONTACTS),
+#: group -> (model, columns searched).  The route each group links to is not here: it is
+#: ``links.search_href(group, term)`` for the header and ``links.href_for(...)`` per item.
+_SEARCH_MODELS: dict[str, tuple[type, tuple[Any, ...]]] = {
+    "tasks": (Task, (Task.title, Task.description, Task.notes)),
+    "projects": (Project, (Project.name, Project.description, Project.next_action)),
+    "notes": (Note, (Note.title, Note.content)),
+    "milestones": (Milestone, (Milestone.title, Milestone.description)),
+    "contacts": (Contact, (Contact.name, Contact.title, Contact.notes)),
+    "companies": (Company, (Company.name, Company.industry, Company.notes)),
 }
 
 RANK_EXACT = 0
@@ -149,7 +149,7 @@ def search(
     groups: list[dict[str, Any]] = []
     total = 0
     for group in SEARCH_GROUP_ORDER:
-        model, columns, page = _SEARCH_MODELS[group]
+        model, columns = _SEARCH_MODELS[group]
         rows = list(
             session.scalars(
                 sa.select(model)
@@ -169,7 +169,7 @@ def search(
             {
                 "type": group,
                 "label": SEARCH_GROUP_LABELS[group],
-                "href": links.search_href(page, needle),
+                "href": links.search_href(group, needle),
                 "items": [
                     {
                         "id": item.id,

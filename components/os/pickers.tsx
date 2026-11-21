@@ -7,7 +7,6 @@ import { cn } from '@/lib/os/cn'
 import { useResource } from '@/lib/os/hooks'
 import { enumLabel } from '@/lib/os/format'
 import type { Company, ListResponse, NoteTag, Project } from '@/lib/os/types'
-import { Input } from './ui/input'
 import { Option, Select, SelectContent, SelectTrigger, SelectValue } from './ui/select'
 
 /** Every project in one request — pickers are deliberately small lists. */
@@ -47,7 +46,11 @@ export function ProjectSelect({
       onValueChange={(next) => onChange(next === '__none' ? null : next)}
       disabled={disabled}
     >
-      <SelectTrigger id={id} size={size} className={className}>
+      <SelectTrigger
+        id={id}
+        size={size}
+        className={cn('rounded-os bg-transparent', className)}
+      >
         <SelectValue placeholder={projects.loading ? 'Loading projects…' : placeholder} />
       </SelectTrigger>
       <SelectContent>
@@ -84,7 +87,7 @@ export function CompanySelect({
       onValueChange={(next) => onChange(next === '__none' ? null : next)}
       disabled={disabled}
     >
-      <SelectTrigger id={id} className={className}>
+      <SelectTrigger id={id} className={cn('rounded-os bg-transparent', className)}>
         <SelectValue placeholder={companies.loading ? 'Loading companies…' : placeholder} />
       </SelectTrigger>
       <SelectContent>
@@ -99,7 +102,10 @@ export function CompanySelect({
   )
 }
 
-/** Comma/Enter separated tag editor with chips and suggestions. */
+/**
+ * Comma/Enter separated tag editor. The field is the line: a bottom hairline
+ * that brightens to ink on focus; tags are hairline text chips, never fills.
+ */
 export function TagInput({
   value,
   onChange,
@@ -140,16 +146,16 @@ export function TagInput({
 
   return (
     <div className={cn('space-y-1.5', className)}>
-      <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-line bg-input p-1.5 focus-within:ring-2 focus-within:ring-ring">
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5 border-b border-line pb-1.5 transition-colors focus-within:border-foreground">
         {value.map((tag) => (
           <span
             key={tag}
-            className="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground"
+            className="inline-flex items-center gap-1 rounded-os border border-line px-1.5 py-0.5 text-[11px] text-muted-foreground"
           >
             {tag}
             <button
               type="button"
-              className="os-tap-none grid size-4 place-items-center rounded text-faint hover:bg-accent hover:text-foreground"
+              className="os-tap-none grid size-4 place-items-center text-faint transition-colors hover:text-foreground"
               onClick={() => onChange(value.filter((v) => v !== tag))}
               aria-label={`Remove tag ${tag}`}
             >
@@ -181,17 +187,17 @@ export function TagInput({
           onBlur={() => add([draft])}
           placeholder={value.length ? '' : placeholder}
           aria-label="Tags"
-          className="os-tap-none h-6 min-w-[8rem] flex-1 border-0 bg-transparent px-1 text-[13px] outline-none focus:ring-0"
+          className="os-tap-none h-6 min-w-[8rem] flex-1 rounded-none border-0 bg-transparent px-1 text-[13px] text-foreground outline-none"
         />
       </div>
       {filtered.length ? (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1.5">
           {filtered.map((tag) => (
             <button
               key={tag}
               type="button"
               onClick={() => add([tag])}
-              className="os-tap-none rounded-md border border-line px-1.5 py-0.5 text-[11px] text-faint transition-colors hover:bg-accent hover:text-foreground"
+              className="os-tap-none rounded-os border border-line px-1.5 py-0.5 text-[11px] text-faint transition-colors hover:border-line-strong hover:text-foreground"
             >
               + {tag}
             </button>
@@ -220,7 +226,7 @@ export function EnumSelect({
 }) {
   return (
     <Select value={value} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger id={id} className={className}>
+      <SelectTrigger id={id} className={cn('rounded-os bg-transparent', className)}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -234,7 +240,10 @@ export function EnumSelect({
   )
 }
 
-/** Multi-purpose small input used by filter toolbars. */
+/**
+ * Multi-purpose small input used by filter toolbars. A bare input: the token
+ * CSS already restyles it as transparent with a bottom hairline.
+ */
 export function SearchInput({
   value,
   onChange,
@@ -249,14 +258,14 @@ export function SearchInput({
   autoFocus?: boolean
 }) {
   return (
-    <Input
+    <input
       type="search"
       value={value}
       autoFocus={autoFocus}
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}
       aria-label={placeholder}
-      className={cn('h-8 min-w-0 text-xs', className)}
+      className={cn('os-tap-none h-8 w-full min-w-0 rounded-none text-xs text-foreground', className)}
     />
   )
 }

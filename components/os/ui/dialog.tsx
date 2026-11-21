@@ -6,6 +6,11 @@ import type { ComponentPropsWithoutRef, ReactNode } from 'react'
 
 import { cn } from '@/lib/os/cn'
 
+/**
+ * Dialog chrome: canvas + one hairline + 2px radius. The overlay is a flat 60%
+ * black (no blur, no gradient) and the only motion is opacity, because this
+ * language has no elevation to animate (docs/DESIGN.md rule 3, rule 7).
+ */
 export const Dialog = DialogPrimitive.Root
 export const DialogTrigger = DialogPrimitive.Trigger
 export const DialogClose = DialogPrimitive.Close
@@ -21,7 +26,7 @@ export function DialogOverlay({
   return (
     <DialogPrimitive.Overlay
       className={cn(
-        'fixed inset-0 z-50 bg-black/55 backdrop-blur-[2px] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0',
+        'fixed inset-0 z-50 bg-black/60 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0',
         className
       )}
       {...props}
@@ -52,8 +57,8 @@ export function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         className={cn(
-          'fixed left-1/2 top-1/2 z-50 flex max-h-[92dvh] w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-line bg-card text-card-foreground shadow-os-lg',
-          'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
+          'fixed left-1/2 top-1/2 z-50 flex max-h-[92dvh] w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-os border border-line bg-background text-foreground',
+          'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0',
           SIZES[size],
           className
         )}
@@ -63,7 +68,7 @@ export function DialogContent({
         {!hideClose ? (
           <DialogPrimitive.Close
             aria-label="Close dialog"
-            className="absolute right-2 top-2 z-10 inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="absolute right-1.5 top-1.5 z-10 inline-flex size-8 items-center justify-center rounded-os border !border-transparent text-muted-foreground transition-colors duration-150 hover:!border-line hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1"
           >
             <X className="size-4" />
           </DialogPrimitive.Close>
@@ -80,10 +85,11 @@ export function DialogHeader({ title, description, className, children }: {
   children?: ReactNode
 }) {
   return (
-    <div className={cn('shrink-0 border-b border-line px-5 py-4 pr-12', className)}>
+    <div className={cn('shrink-0 border-b border-line px-4 py-3 pr-12', className)}>
       {title ? (
-        <DialogPrimitive.Title className="font-os-display text-[15px] font-semibold tracking-tight">
-          {title}
+        // The label lives on a child span so `.os-root h2` cannot out-specify it.
+        <DialogPrimitive.Title className="min-w-0">
+          <span className="os-label block truncate">{title}</span>
         </DialogPrimitive.Title>
       ) : null}
       {description ? (
@@ -100,14 +106,14 @@ export function DialogHeader({ title, description, className, children }: {
 }
 
 export function DialogBody({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={cn('min-h-0 flex-1 overflow-y-auto px-5 py-4', className)}>{children}</div>
+  return <div className={cn('min-h-0 flex-1 overflow-y-auto px-4 py-4', className)}>{children}</div>
 }
 
 export function DialogFooter({ className, children }: { className?: string; children: ReactNode }) {
   return (
     <div
       className={cn(
-        'flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-line bg-muted/40 px-5 py-3',
+        'flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-line px-4 py-3',
         className
       )}
     >

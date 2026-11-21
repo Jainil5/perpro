@@ -57,7 +57,7 @@ def test_an_overdue_task_produces_one_critical_notification(
     assert overdue[0].severity == "critical"
     assert overdue[0].dedupe_key == f"task_overdue:{workspace_id}"
     assert "Late thing" in (overdue[0].body or "")
-    assert overdue[0].href == "/os/tasks?filter=overdue"
+    assert overdue[0].href == "/tasks?filter=overdue"
 
 
 def test_due_today_and_tomorrow_are_separate_rules(session: Session, workspace_id: str) -> None:
@@ -329,4 +329,4 @@ def test_derived_rows_are_scoped_to_the_workspace_and_entity(
     notifications.refresh(session, workspace_id, today=DAY)
     milestone_row = by_key(session, workspace_id, "milestone:")
     assert milestone_row.entity_type == "milestone"
-    assert milestone_row.href.startswith("/os/projects/")
+    assert milestone_row.href == f"/projects/{project['id']}"

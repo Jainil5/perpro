@@ -12,12 +12,15 @@ const SIZES = {
 /**
  * Initials avatar. No Radix dependency: the people directory only ever needs a
  * stable, themed placeholder, never a remote image.
+ *
+ * It is a disc (the brand motif) drawn as a hairline ring with muted ink — a
+ * fill would read as a card, and a hue would read as state.
  */
 export function Avatar({
   name,
   size = 'md',
   className,
-  tone = 'bg-primary/12 text-primary',
+  tone = 'border-line text-muted-foreground',
 }: {
   name?: string | null
   size?: keyof typeof SIZES
@@ -28,7 +31,7 @@ export function Avatar({
     <span
       aria-hidden
       className={cn(
-        'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-line font-os-display font-semibold uppercase',
+        'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border font-os-display font-medium uppercase tracking-[0.04em]',
         SIZES[size],
         tone,
         className

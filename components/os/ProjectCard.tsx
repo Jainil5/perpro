@@ -1,16 +1,20 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowRight, CalendarDays, FolderGit2, Milestone as MilestoneIcon } from 'lucide-react'
+import { ArrowRight, CalendarDays, FolderGit2 } from 'lucide-react'
 
 import { cn } from '@/lib/os/cn'
-import { daysUntil, dueLabel, DUE_TONE_TEXT, dueTone, formatDate } from '@/lib/os/format'
+import { daysUntil, dueLabel, DUE_TONE_TEXT, dueTone, enumLabel, formatDate } from '@/lib/os/format'
 import type { Project } from '@/lib/os/types'
-import { Badge, PriorityBadge, PROJECT_STATUS_TONE, StatusBadge } from './ui/badge'
+import { HairlineBar, StatusDot } from './marks'
+import { dotStateFor, dotToneForDue, PriorityText } from './TaskRow'
 import { Card } from './ui/card'
-import { Progress } from './ui/progress'
 
-/** Project card used by /os/projects and the dashboard grid. */
+/**
+ * Project card used by /projects and the dashboard grid. A panel here is the
+ * canvas + 1px hairline + 2px radius — no fill, no shadow. Progress is the
+ * white HairlineBar on a hairline track; status leads with the 8px disc.
+ */
 export function ProjectCard({
   project,
   onEdit,
@@ -22,37 +26,50 @@ export function ProjectCard({
 }) {
   const counts = project.task_counts ?? { total: 0, done: 0, open: 0, overdue: 0 }
   const left = daysUntil(project.target_date)
-  const overdue = counts.overdue > 0
-  const pastTarget = left != null && left < 0 && project.status !== 'completed' && project.status !== 'archived'
+  const settled = project.status === 'completed' || project.status === 'archived'
+  const targetTone = settled ? 'none' : dueTone(project.target_date)
 
   return (
-    <Card className={cn('flex min-w-0 flex-col gap-3 p-4', className)}>
+    <Card
+      className={cn(
+        'flex min-w-0 flex-col gap-3 rounded-os border-line bg-transparent p-4 shadow-none',
+        className
+      )}
+    >
       <div className="flex min-w-0 items-start justify-between gap-2">
-        <div className="min-w-0">
-          <Link
-            href={`/os/projects/${project.id}`}
-            className="block truncate font-os-display text-[13.5px] font-semibold tracking-tight hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {project.name}
-          </Link>
-          {project.category ? (
-            <p className="mt-0.5 truncate text-[11px] text-faint">{project.category}</p>
-          ) : null}
+        <div className="flex min-w-0 items-start gap-2.5">
+          <StatusDot
+            state={dotStateFor(project.status)}
+            tone={dotToneForDue(targetTone)}
+            title={enumLabel(project.status)}
+            className="mt-[6px]"
+          />
+          <div className="min-w-0">
+            <Link
+              href={`/projects/${project.id}`}
+              className="block truncate font-os-display text-[13.5px] font-medium tracking-tight text-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground"
+            >
+              {project.name}
+            </Link>
+            {project.category ? (
+              <p className="os-label os-label-faint mt-1 truncate">{project.category}</p>
+            ) : null}
+          </div>
         </div>
         {onEdit ? (
           <button
             type="button"
             onClick={() => onEdit(project)}
-            className="os-tap-none shrink-0 rounded-md px-1.5 py-0.5 text-[11px] text-faint transition-colors hover:bg-accent hover:text-foreground"
+            className="os-tap-none shrink-0 rounded-os px-1.5 py-0.5 text-[11px] text-faint transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground"
           >
             Edit
           </button>
         ) : null}
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5">
-        <StatusBadge value={project.status} table={PROJECT_STATUS_TONE} />
-        <PriorityBadge value={project.priority} />
+      <div className="flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-1">
+        <span className="os-label">{enumLabel(project.status)}</span>
+        <PriorityText value={project.priority} />
         {project.description ? (
           <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
             {project.description}
@@ -60,46 +77,47 @@ export function ProjectCard({
         ) : null}
       </div>
 
-      <Progress
-        value={project.progress}
-        showValue
-        size="sm"
-        label={`${project.name} progress`}
-        tone={pastTarget ? 'bg-warning' : undefined}
-      />
+      <div className="flex min-w-0 items-center gap-2.5">
+        <HairlineBar value={project.progress ?? 0} className="min-w-0 flex-1" />
+        <span className="os-mono shrink-0 text-[11px] text-muted-foreground">
+          {Math.round(project.progress ?? 0)}%
+        </span>
+      </div>
 
-      <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] sm:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-x-3 gap-y-1 sm:grid-cols-4">
         <Stat label="Open" value={counts.open} />
         <Stat label="Done" value={counts.done} />
-        <Stat label="Overdue" value={counts.overdue} tone={overdue ? 'text-destructive' : undefined} />
-        <Stat
-          label="Milestones"
-          value={`${project.milestones_done ?? 0}/${project.milestone_count ?? 0}`}
-        />
+        <Stat label="Overdue" value={counts.overdue} tone={counts.overdue > 0 && !settled ? 'text-danger' : undefined} />
+        <Stat label="Milestones" value={`${project.milestones_done ?? 0}/${project.milestone_count ?? 0}`} />
       </dl>
 
-      <div className="min-w-0 rounded-lg border border-line bg-muted/40 px-2.5 py-2">
-        <p className="os-eyebrow">Next action</p>
+      <div className="min-w-0 border-t border-line pt-2.5">
+        <p className="os-label">Next action</p>
         {project.next_action ? (
-          <p className="mt-0.5 text-[12.5px] leading-snug text-foreground">{project.next_action}</p>
+          <p className="mt-1 text-[12.5px] leading-snug text-foreground">{project.next_action}</p>
         ) : (
-          <p className="mt-0.5 text-[12px] text-faint">
+          <p className="mt-1 text-[12px] text-faint">
             Not set —{' '}
             <button
               type="button"
               onClick={() => onEdit?.(project)}
-              className="text-primary underline-offset-2 hover:underline"
+              className="text-muted-foreground underline decoration-line-strong underline-offset-2 hover:text-foreground hover:decoration-foreground"
             >
               add one
             </button>
           </p>
         )}
         {project.next_due?.title ? (
-          <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <ArrowRight className="size-3 shrink-0" />
+          <p className="mt-1.5 flex min-w-0 items-baseline gap-1.5 text-[11px] text-muted-foreground">
+            <ArrowRight className="size-3 shrink-0 self-center text-faint" />
             <span className="min-w-0 truncate">{project.next_due.title}</span>
             {project.next_due.due_date ? (
-              <span className={cn('os-num shrink-0', DUE_TONE_TEXT[dueTone(project.next_due.due_date)])}>
+              <span
+                className={cn(
+                  'os-mono ml-auto shrink-0 text-right',
+                  DUE_TONE_TEXT[dueTone(project.next_due.due_date)]
+                )}
+              >
                 {dueLabel(project.next_due.due_date)}
               </span>
             ) : null}
@@ -107,47 +125,38 @@ export function ProjectCard({
         ) : null}
       </div>
 
-      <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+      <div className="os-mono mt-auto flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
         {project.target_date ? (
-          <span
-            className={cn(
-              'flex items-center gap-1',
-              pastTarget && 'text-warning',
-              left != null && left >= 0 && left <= 7 && 'text-warning'
-            )}
-          >
-            <CalendarDays className="size-3" />
-            <span className="os-num">{formatDate(project.target_date)}</span>
-            <span>
+          <span className={cn('inline-flex items-center gap-1', DUE_TONE_TEXT[targetTone])}>
+            <CalendarDays className="size-3 self-center text-faint" />
+            <span>{formatDate(project.target_date)}</span>
+            <span className="text-faint">
               {left == null
                 ? ''
                 : left < 0
                   ? ` · ${Math.abs(left)}d late`
                   : left === 0
                     ? ' · today'
-                    : ` · ${left}d left`}
+                    : ` · ${left}d`}
             </span>
           </span>
         ) : (
-          <span className="flex items-center gap-1 text-faint">
-            <CalendarDays className="size-3" />
+          <span className="inline-flex items-center gap-1 text-faint">
+            <CalendarDays className="size-3 self-center" />
             no target date
           </span>
         )}
         {project.milestone_count ? (
-          <span className="flex items-center gap-1">
-            <MilestoneIcon className="size-3" />
-            <span className="os-num">{project.milestone_count}</span>
-          </span>
+          <span className="text-faint">{project.milestone_count} ms</span>
         ) : null}
         {project.repository_url ? (
           <a
             href={project.repository_url}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-1 underline-offset-2 hover:text-primary hover:underline"
+            className="inline-flex items-center gap-1 underline decoration-line-strong underline-offset-2 hover:text-foreground hover:decoration-foreground"
           >
-            <FolderGit2 className="size-3" />
+            <FolderGit2 className="size-3 self-center" />
             repo
           </a>
         ) : null}
@@ -156,14 +165,14 @@ export function ProjectCard({
             href={project.documentation_url}
             target="_blank"
             rel="noreferrer"
-            className="underline-offset-2 hover:text-primary hover:underline"
+            className="underline decoration-line-strong underline-offset-2 hover:text-foreground hover:decoration-foreground"
           >
             docs
           </a>
         ) : null}
         <Link
-          href={`/os/tasks?project=${project.id}`}
-          className="ml-auto shrink-0 text-faint underline-offset-2 hover:text-primary hover:underline"
+          href={`/tasks?project=${project.id}`}
+          className="ml-auto shrink-0 underline decoration-line-strong underline-offset-2 hover:text-foreground hover:decoration-foreground"
         >
           tasks
         </Link>
@@ -175,25 +184,26 @@ export function ProjectCard({
 function Stat({ label, value, tone }: { label: string; value: number | string; tone?: string }) {
   return (
     <div className="min-w-0">
-      <dt className="truncate text-faint">{label}</dt>
-      <dd className={cn('os-num text-[13px] text-foreground', tone)}>{value}</dd>
+      <dt className="os-label os-label-faint truncate">{label}</dt>
+      <dd className={cn('os-mono text-right text-[13px] text-foreground', tone)}>{value}</dd>
     </div>
   )
 }
 
-/** Tiny badge row used where a full card would be too heavy. */
+/** Tiny row used where a full card would be too heavy. */
 export function ProjectLine({ project }: { project: Project }) {
   return (
-    <span className="flex min-w-0 items-center gap-1.5">
+    <span className="flex min-w-0 items-baseline gap-2">
+      <StatusDot state={dotStateFor(project.status)} />
       <Link
-        href={`/os/projects/${project.id}`}
-        className="truncate text-[12.5px] underline-offset-2 hover:text-primary hover:underline"
+        href={`/projects/${project.id}`}
+        className="min-w-0 truncate text-[12.5px] text-foreground underline decoration-line-strong underline-offset-2 hover:decoration-foreground"
       >
         {project.name}
       </Link>
-      <Badge tone="outline" size="sm">
-        {project.progress}%
-      </Badge>
+      <span className="os-mono shrink-0 text-right text-[11px] text-muted-foreground">
+        {Math.round(project.progress ?? 0)}%
+      </span>
     </span>
   )
 }

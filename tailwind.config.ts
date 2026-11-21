@@ -2,14 +2,16 @@ import type { Config } from 'tailwindcss'
 import animate from 'tailwindcss-animate'
 
 /**
- * MyOS maps semantic utilities onto the `--os-*` CSS variables declared in
- * app/os.css (scoped to `.os-root`), so light/dark is a class swap rather than a
- * rewrite — the same mechanism shadcn/ui uses. Because the variables only exist
- * under `.os-root`, these utilities are inert on the PerPro screens, which keep
- * their own tokens from app/globals.css.
+ * The app maps semantic utilities onto the `--os-*` CSS variables declared in
+ * app/os.css, which components/Shell.tsx scopes with the `os-root` / `os-light`
+ * classes — so light/dark is a class swap rather than a rewrite, the same
+ * mechanism shadcn/ui uses, and MyOS and PerPro/legacy screens read one palette.
  *
- * MyOS components therefore write `bg-card`, `text-muted-foreground`,
- * `border-line`, `text-success`, … and never a raw hex value.
+ * Components write `bg-card`, `text-muted-foreground`, `border-line`,
+ * `text-success`, … and never a raw hex value. Per docs/DESIGN.md the palette
+ * is black/white/grey: `bg-primary` is white ink on canvas, the only hues left
+ * are the three semantic tokens, and radius is 2px with no shadows — which is
+ * why rounded-os-lg resolves to the same 2px as rounded-os rather than growing.
  */
 const token = (name: string) => `hsl(var(--os-${name}) / <alpha-value>)`
 
@@ -31,6 +33,7 @@ const config: Config = {
         popover: token('popover'),
         'popover-foreground': token('foreground'),
         sidebar: token('sidebar'),
+        'canvas-deep': token('canvas-deep'),
 
         primary: token('primary'),
         'primary-foreground': token('primary-foreground'),
@@ -45,6 +48,7 @@ const config: Config = {
         'border-strong': token('line-strong'),
         line: token('line'),
         'line-strong': token('line-strong'),
+        'line-faint': token('line-faint'),
         faint: token('faint'),
         input: token('input'),
         ring: token('ring'),
@@ -57,10 +61,18 @@ const config: Config = {
         info: token('info'),
         ai: token('ai'),
       },
+      /**
+       * `border` / `divide-y` with no colour class resolve to the hairline
+       * rather than currentColor. Doing it here is why app/os.css no longer
+       * needs a `.os-root *{border-color}` rule: that rule out-specified every
+       * `border-transparent` / `border-foreground` utility a component wrote.
+       */
+      borderColor: { DEFAULT: token('line') },
+      divideColor: { DEFAULT: token('line') },
       borderRadius: {
         os: 'var(--os-radius)',
-        'os-lg': 'calc(var(--os-radius) + 4px)',
-        'os-sm': 'calc(var(--os-radius) - 2px)',
+        'os-lg': 'var(--os-radius)',
+        'os-sm': 'var(--os-radius)',
       },
       fontFamily: {
         'os-display': ['var(--os-font-display)'],

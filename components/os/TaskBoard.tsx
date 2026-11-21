@@ -6,12 +6,13 @@ import { useMemo, useState } from 'react'
 import { cn } from '@/lib/os/cn'
 import { api, errorMessage } from '@/lib/os/client'
 import { invalidate } from '@/lib/os/hooks'
-import { dueLabel, DUE_TONE_TEXT, dueTone, enumLabel } from '@/lib/os/format'
+import { dueTone, enumLabel } from '@/lib/os/format'
 import { TASK_BOARD_COLUMNS } from '@/lib/os/enums'
 import type { Task } from '@/lib/os/types'
-import { Badge, toneFor, PRIORITY_TONE } from './ui/badge'
+import { StatusDot } from './marks'
+import { dotStateFor, dotToneForDue, DueText, PriorityText } from './TaskRow'
+import { SkeletonLines } from './states'
 import { IconButton } from './ui/button'
-import { SkeletonRows } from './ui/skeleton'
 import { toastError } from './ui/toast'
 
 const BOARD_SCOPE = ['/tasks', '/projects', '/dashboard', '/meta', '/activity']
@@ -20,6 +21,9 @@ const BOARD_SCOPE = ['/tasks', '/projects', '/dashboard', '/meta', '/activity']
  * Kanban board. Dragging a card posts `POST /tasks/{id}/move` with the target
  * column and position — the board is a view over the API, never a local copy.
  * Arrow buttons on each card do the same thing for keyboard users.
+ *
+ * Columns are hairline boxes with no background; the drag target is the 1px
+ * ink top rule (.os-drop-target), cards are canvas + hairline + 2px radius.
  */
 export function TaskBoard({
   tasks,
@@ -77,12 +81,20 @@ export function TaskBoard({
     void move(task, target, task.position)
   }
 
+  const columnClass =
+    'flex min-w-0 flex-col rounded-os border border-line transition-shadow'
+
   if (loading) {
     return (
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-4">
         {TASK_BOARD_COLUMNS.map((column) => (
-          <div key={column} className="rounded-xl border border-line bg-card/60 p-3">
-            <SkeletonRows rows={3} />
+          <div key={column} className={columnClass}>
+            <div className="border-b border-line px-3 py-2">
+              <SkeletonLines rows={1} />
+            </div>
+            <div className="space-y-2.5 p-3">
+              <SkeletonLines rows={3} />
+            </div>
           </div>
         ))}
       </div>
@@ -90,7 +102,7 @@ export function TaskBoard({
   }
 
   return (
-    <div className="os-scroll-x grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-4">
+    <div className="os-scroll-x grid min-w-0 gap-2.5 md:grid-cols-2 xl:grid-cols-4">
       {columns.list.map(({ status, items }, colIndex) => (
         <section
           key={status}
@@ -107,16 +119,16 @@ export function TaskBoard({
             if (task) void move(task, status, over?.column === status ? over.index : items.length)
           }}
           className={cn(
-            'flex min-w-0 flex-col rounded-xl border bg-card/60 transition-colors',
-            over?.column === status && dragId ? 'border-primary/60 bg-primary/5' : 'border-line'
+            columnClass,
+            over?.column === status && dragId && 'os-drop-target'
           )}
         >
           <header className="flex shrink-0 items-center justify-between gap-2 border-b border-line px-3 py-2">
-            <span className="os-eyebrow">{enumLabel(status)}</span>
-            <span className="os-num text-[11px] text-faint">{items.length}</span>
+            <span className="os-label">{enumLabel(status)}</span>
+            <span className="os-mono text-[11px] text-faint">{items.length}</span>
           </header>
 
-          <ul className="min-w-0 flex-1 space-y-1.5 p-2">
+          <ul className="min-w-0 flex-1 space-y-2 p-2">
             {items.map((task, index) => (
               <li
                 key={task.id}
@@ -143,14 +155,14 @@ export function TaskBoard({
               </li>
             ))}
             {!items.length ? (
-              <li className="px-1 py-6 text-center text-[11px] text-faint">Drop a task here</li>
+              <li className="os-micro px-1 py-6 text-center">Drop a task here</li>
             ) : null}
           </ul>
         </section>
       ))}
 
       {columns.other.length ? (
-        <p className="text-[11px] text-faint md:col-span-2 xl:col-span-4">
+        <p className="os-micro md:col-span-2 xl:col-span-4">
           {columns.other.length} task{columns.other.length === 1 ? '' : 's'} outside the board (
           {columns.statuses.join(', ')}) — edit one to bring it back.
         </p>
@@ -182,7 +194,8 @@ function BoardCard({
   canBack: boolean
   canForward: boolean
 }) {
-  const tone = dueTone(task.due_date)
+  const done = task.status === 'done'
+  const tone = done ? 'none' : dueTone(task.due_date)
   return (
     <article
       draggable
@@ -193,22 +206,27 @@ function BoardCard({
       }}
       onDragEnd={onDragEnd}
       className={cn(
-        'group rounded-lg border border-line bg-card p-2.5 shadow-os transition-all hover:border-line-strong',
+        'group rounded-os border border-line p-2.5 transition-colors hover:border-line-strong',
         dragging && 'os-drag-ghost',
         busy && 'opacity-60'
       )}
     >
       <div className="flex items-start gap-2">
+        <StatusDot
+          state={dotStateFor(task.status)}
+          tone={dotToneForDue(tone)}
+          className="mt-1.5"
+        />
         <button
           type="button"
           onClick={onOpen}
-          className="min-w-0 flex-1 text-left text-[12.5px] leading-snug focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-w-0 flex-1 text-left text-[12.5px] leading-snug focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-foreground"
         >
-          <span className="line-clamp-2 text-foreground">{task.title}</span>
+          <span className={cn('line-clamp-2', done ? 'text-faint' : 'text-foreground')}>
+            {task.title}
+          </span>
           {showProject && task.project ? (
-            <span className="mt-1 block truncate text-[11px] text-muted-foreground">
-              {task.project.name}
-            </span>
+            <span className="os-label mt-1 block truncate">{task.project.name}</span>
           ) : null}
         </button>
         <span className="flex shrink-0 items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
@@ -231,15 +249,11 @@ function BoardCard({
         </span>
       </div>
 
-      <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
-        <Badge tone={toneFor(PRIORITY_TONE, task.priority)} size="sm">
-          {task.priority}
-        </Badge>
-        {task.due_date ? (
-          <span className={cn('os-num', DUE_TONE_TEXT[tone])}>{dueLabel(task.due_date)}</span>
-        ) : null}
+      <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+        <PriorityText value={task.priority} />
+        <DueText value={task.due_date} muted={done} className="ml-auto" />
         {task.tags?.length ? (
-          <span className="truncate text-faint">#{task.tags[0]}</span>
+          <span className="os-micro truncate">#{task.tags[0]}</span>
         ) : null}
       </div>
     </article>

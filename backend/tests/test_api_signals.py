@@ -205,7 +205,7 @@ def test_notifications_are_generated_on_demand_only(client: TestClient) -> None:
         "updated_at",
     }
     assert first["kind"] == "task_overdue" and first["severity"] == "critical"
-    assert first["href"].startswith("/os/")
+    assert first["href"] == "/tasks?filter=overdue"
 
     again = client.post(f"{V1}/notifications/refresh", params={"today": TODAY}).json()
     assert again == {"created": 0, "resolved": 0}
@@ -342,7 +342,7 @@ def test_activity_records_the_writes(client: TestClient) -> None:
         "created_at",
     }
     assert row["entity_type"] == "task" and row["entity_id"] == task["id"]
-    assert row["entity_title"] == "Logged" and row["href"].startswith("/os/")
+    assert row["entity_title"] == "Logged" and row["href"] == f"/tasks?task={task['id']}"
     assert row["actor"] == "owner" and row["created_at"].endswith("Z")
     assert "Logged" in row["summary"]
     assert rows["created"]["summary"].startswith("Created")

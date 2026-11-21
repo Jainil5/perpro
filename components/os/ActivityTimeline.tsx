@@ -16,8 +16,8 @@ import type { ReactNode } from 'react'
 import { cn } from '@/lib/os/cn'
 import { dayHeading, dayKey, formatTime, osHref, relativeTime } from '@/lib/os/format'
 import type { ActivityLog } from '@/lib/os/types'
-import { Badge } from './ui/badge'
 
+/** Verb glyphs stay 1px-stroke and inline — no circles, no fills. */
 const VERB_ICON: Record<string, ReactNode> = {
   created: <Plus className="size-3" />,
   updated: <Pencil className="size-3" />,
@@ -28,7 +28,14 @@ const VERB_ICON: Record<string, ReactNode> = {
   moved: <Move className="size-3" />,
 }
 
-/** Activity feed grouped by calendar day — /os/activity and project detail. */
+const LINK_CLASS =
+  'text-foreground underline decoration-line-strong underline-offset-2 hover:decoration-foreground'
+
+/**
+ * Activity feed grouped by calendar day — /activity and project detail.
+ * Structure per DESIGN rule 8: a fixed mono time gutter, a hairline spine,
+ * the entry, and the record kind as a micro-label.
+ */
 export function ActivityTimeline({
   items,
   emptyLabel = 'No activity recorded yet.',
@@ -36,7 +43,7 @@ export function ActivityTimeline({
   items: ActivityLog[]
   emptyLabel?: string
 }) {
-  if (!items.length) return <p className="px-1 py-4 text-xs text-muted-foreground">{emptyLabel}</p>
+  if (!items.length) return <p className="os-micro px-1 py-4">{emptyLabel}</p>
 
   const sections: { key: string; items: ActivityLog[] }[] = []
   for (const item of items) {
@@ -47,48 +54,41 @@ export function ActivityTimeline({
   }
 
   return (
-    <div className="min-w-0 space-y-4">
+    <div className="min-w-0 space-y-5">
       {sections.map((section) => (
         <section key={section.key} className="min-w-0">
-          <div className="mb-1 flex items-center gap-2">
-            <h3 className="os-eyebrow">{dayHeading(section.key)}</h3>
-            <span className="os-num text-[10px] text-faint">{section.items.length}</span>
-            <span className="h-px flex-1 bg-line" />
+          <div className="mb-1 flex items-center gap-3">
+            <h3 className="os-label">{dayHeading(section.key)}</h3>
+            <span className="os-mono text-[10px] text-faint">{section.items.length}</span>
+            <span aria-hidden className="h-px flex-1 bg-line" />
           </div>
-          <ol className="relative min-w-0 space-y-1 pl-4">
-            <span aria-hidden className="absolute inset-y-1 left-[5px] w-px bg-line" />
+          <ol className="grid min-w-0 grid-cols-[3.5rem_minmax(0,1fr)]">
             {section.items.map((item) => {
               const href = osHref(item.href)
               return (
-                <li key={item.id} className="relative min-w-0">
-                  <span
-                    aria-hidden
-                    className="absolute left-[-11px] top-2.5 grid size-3 place-items-center rounded-full border border-line bg-card"
-                  >
-                    <span className="text-faint [&_svg]:size-2">
-                      {VERB_ICON[item.verb] ?? <Eye className="size-2" />}
-                    </span>
+                <li key={item.id} className="contents">
+                  <span className="os-mono py-1.5 pr-2 text-right text-[11px] leading-5 text-faint">
+                    {formatTime(item.created_at)}
                   </span>
-                  <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted/50">
-                    {osHref(item.href) ? (
-                      <Link
-                        href={osHref(item.href) as string}
-                        className="min-w-0 flex-1 truncate text-[12.5px] underline-offset-2 hover:text-primary hover:underline"
-                      >
-                        {item.summary || item.entity_title || item.verb}
-                      </Link>
-                    ) : (
-                      <span className="min-w-0 flex-1 truncate text-[12.5px]">
-                        {item.summary || item.entity_title || item.verb}
+                  <div className="min-w-0 border-l border-line py-1.5 pl-3">
+                    <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                      <span aria-hidden className="self-center text-faint">
+                        {VERB_ICON[item.verb] ?? <Eye className="size-3" />}
                       </span>
-                    )}
-                    <span className="flex shrink-0 items-center gap-1.5 text-[11px] text-faint">
-                      <Badge tone="outline" size="sm">
-                        {item.entity_type}
-                      </Badge>
-                      <span className="os-mono">{formatTime(item.created_at)}</span>
-                      <span className="hidden sm:inline">{relativeTime(item.created_at)}</span>
-                    </span>
+                      {href ? (
+                        <Link href={href} className={cn('min-w-0 flex-1 truncate text-[12.5px]', LINK_CLASS)}>
+                          {item.summary || item.entity_title || item.verb}
+                        </Link>
+                      ) : (
+                        <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted-foreground">
+                          {item.summary || item.entity_title || item.verb}
+                        </span>
+                      )}
+                      <span className="os-label os-label-faint shrink-0">{item.entity_type}</span>
+                      <span className="os-micro hidden shrink-0 sm:inline">
+                        {relativeTime(item.created_at)}
+                      </span>
+                    </div>
                   </div>
                 </li>
               )
@@ -102,27 +102,29 @@ export function ActivityTimeline({
 
 /** The same data as a tight table, for panels with little room. */
 export function ActivityRows({ items }: { items: ActivityLog[] }) {
-  if (!items.length)
-    return <p className="px-1 py-3 text-xs text-muted-foreground">Nothing has changed recently.</p>
+  if (!items.length) return <p className="os-micro px-1 py-3">Nothing has changed recently.</p>
   return (
-    <ul className="min-w-0 space-y-px">
+    <ul className="min-w-0">
       {items.map((item) => {
         const href = osHref(item.href)
         return (
-          <li key={item.id} className="min-w-0">
+          <li
+            key={item.id}
+            className="flex min-w-0 items-baseline gap-2 border-b border-line-faint px-1 py-1.5 last:border-b-0"
+          >
             <Link
               href={href ?? '#'}
               scroll={Boolean(href)}
               className={cn(
-                'flex min-w-0 items-baseline gap-2 rounded-lg px-2 py-1.5 text-[12.5px] transition-colors hover:bg-muted/50',
-                !href && 'pointer-events-none text-muted-foreground'
+                'min-w-0 flex-1 truncate text-[12.5px]',
+                href ? LINK_CLASS : 'pointer-events-none text-muted-foreground'
               )}
             >
-              <span className="min-w-0 flex-1 truncate">{item.summary}</span>
-              <span className="os-mono shrink-0 text-[11px] text-faint">
-                {relativeTime(item.created_at)}
-              </span>
+              {item.summary}
             </Link>
+            <span className="os-mono shrink-0 text-right text-[11px] text-faint">
+              {relativeTime(item.created_at)}
+            </span>
           </li>
         )
       })}

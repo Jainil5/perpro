@@ -31,7 +31,7 @@ interface NoteForm {
 }
 
 /**
- * Quick-create note. Editing an existing note happens in the /os/notes editor,
+ * Quick-create note. Editing an existing note happens in the /notes editor,
  * where the markdown source, preview, relations and backlinks live.
  */
 export function NoteDialog({
@@ -109,7 +109,7 @@ export function NoteDialog({
           {banner ? (
             <p
               role="alert"
-              className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+              className="rounded-os border border-line px-3 py-2 text-xs text-danger"
             >
               {banner}
             </p>
@@ -162,10 +162,15 @@ export function NoteDialog({
           </label>
         </DialogBody>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={create.pending}>
+          <Button
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            disabled={create.pending}
+            className="rounded-os border border-line bg-transparent hover:bg-transparent"
+          >
             Cancel
           </Button>
-          <Button onClick={() => void submit()} loading={create.pending}>
+          <Button onClick={() => void submit()} loading={create.pending} className="rounded-os">
             Create note
           </Button>
         </DialogFooter>

@@ -5,6 +5,10 @@ import type { ComponentPropsWithoutRef } from 'react'
 
 import { cn } from '@/lib/os/cn'
 
+/**
+ * The rule is the separator: 1px, `--os-line` for a real division and
+ * `--os-line-faint` for an inner one. Nothing dashed, nothing 3D.
+ */
 export function Separator({
   className,
   orientation = 'horizontal',
@@ -27,5 +31,5 @@ export function Separator({
 
 /** Thin vertical divider for toolbars. */
 export function VDivider({ className }: { className?: string }) {
-  return <span aria-hidden className={cn('mx-1 h-5 w-px shrink-0 bg-line', className)} />
+  return <span aria-hidden className={cn('mx-1 h-5 w-px shrink-0 bg-line-faint', className)} />
 }

@@ -498,7 +498,7 @@ export interface Insight {
   kind: string
   severity: Severity
   text: string
-  /** Deep link into whatever triggered the rule, e.g. `/os/tasks?filter=overdue`. */
+  /** Deep link into whatever triggered the rule, e.g. `/tasks?filter=overdue`. */
   href?: string | null
 }
 

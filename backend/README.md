@@ -79,7 +79,7 @@ are never touched, only `source='demo'` rows. `export PATH` writes byte-for-byte
 ## Tests
 
 ```bash
-cd backend && python3 -m pytest -q          # 368 tests, all offline
+cd backend && python3 -m pytest -q          # 370 tests, all offline
 ```
 
 Each test gets its own SQLite file under `tmp_path` (`isolated_database` in
@@ -92,7 +92,7 @@ Each test gets its own SQLite file under `tmp_path` (`isolated_database` in
 | `test_dashboard.py`, `test_search.py`, `test_notifications.py` | 47 | derived widgets, grouped search, dedupe-key rules |
 | `test_demo.py`, `test_export.py` | 32 | demo dataset contract, JSON dump |
 | `test_api_tasks.py`, `test_api_projects.py`, `test_api_notes.py`, `test_api_people.py`, `test_api_signals.py` | 138 | every endpoint: happy path, `422` detail shape, `404`, `409`, bulk, complete→rollover, project-delete cascade |
-| `test_links.py` | 11 | the deep-link contract: every entity mapping, the missing-project guard, no `None` in any href |
+| `test_links.py` | 13 | the deep-link contract: every entity mapping on its canonical route, the missing-project guard, no `None` and no retired prefix in any href |
 | `test_cli.py` | 24 | `init-db`/`migrate`/`stamp`/`seed`/`notify`/`export`/`meta`/`url` in-process |
 
 ## Docker

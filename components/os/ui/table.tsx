@@ -4,6 +4,11 @@ import type { HTMLAttributes, TableHTMLAttributes, TdHTMLAttributes, ThHTMLAttri
 
 import { cn } from '@/lib/os/cn'
 
+/**
+ * Tables are hairlines on canvas: 1px row rules, no zebra stripes, no card
+ * wrapper, no hover wash. Hover and selection brighten the ink instead, and
+ * heads are the same uppercase micro-label used everywhere else.
+ */
 export function Table({ className, ...props }: TableHTMLAttributes<HTMLTableElement>) {
   return (
     <div className="os-scroll-x w-full min-w-0 overflow-x-auto">
@@ -23,7 +28,10 @@ export function TableBody({ className, ...props }: HTMLAttributes<HTMLTableSecti
 export function TableRow({ className, ...props }: HTMLAttributes<HTMLTableRowElement>) {
   return (
     <tr
-      className={cn('border-b border-line transition-colors hover:bg-muted/50 data-[state=selected]:bg-accent', className)}
+      className={cn(
+        'border-b border-line transition-colors duration-150 hover:text-foreground data-[state=selected]:text-foreground',
+        className
+      )}
       {...props}
     />
   )
@@ -34,7 +42,7 @@ export function TableHead({ className, ...props }: ThHTMLAttributes<HTMLTableCel
     <th
       scope="col"
       className={cn(
-        'h-9 whitespace-nowrap px-3 text-left align-middle font-os-display text-[11px] font-semibold uppercase tracking-wide text-muted-foreground',
+        'os-label h-9 whitespace-nowrap px-3 text-left align-middle font-medium',
         className
       )}
       {...props}
@@ -47,5 +55,5 @@ export function TableCell({ className, ...props }: TdHTMLAttributes<HTMLTableCel
 }
 
 export function TableCaption({ className, ...props }: HTMLAttributes<HTMLTableCaptionElement>) {
-  return <caption className={cn('mt-3 text-xs text-muted-foreground', className)} {...props} />
+  return <caption className={cn('mt-3 os-micro text-left', className)} {...props} />
 }

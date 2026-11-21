@@ -2,6 +2,7 @@
 
 import {
   Activity,
+  Archive,
   ArrowLeftRight,
   BarChart3,
   Bell,
@@ -12,8 +13,10 @@ import {
   CalendarDays,
   Contact,
   Folder,
+  Inbox,
   LayoutDashboard,
   ListChecks,
+  Newspaper,
   Notebook,
   Plug,
   Receipt,
@@ -21,17 +24,19 @@ import {
   Rocket,
   Search,
   Settings,
-  Sparkles,
   Star,
   Target,
   TrendingUp,
   Users,
+  Video,
   type LucideIcon,
 } from 'lucide-react'
 
 /**
- * The sidebar model. Anything not shipped in Phase 1 links to the roadmap
- * anchor for its phase instead of pretending to be a working screen.
+ * The navigation model for the whole app — `components/Shell.tsx` renders it in
+ * the sidebar and in the mobile drawer, so there is exactly one nav source.
+ * Anything not shipped yet links to the roadmap anchor for its phase instead of
+ * pretending to be a working screen.
  */
 
 export type OsPhase = 2 | 3 | 4 | 5 | 6
@@ -39,12 +44,12 @@ export type OsPhase = 2 | 3 | 4 | 5 | 6
 export interface OsNavItem {
   label: string
   icon: LucideIcon
-  /** Phase 1 destination. Omitted for roadmap entries. */
+  /** Shipped destination. Omitted for roadmap entries. */
   href?: string
-  /** Roadmap anchor for unbuilt modules (`/os/roadmap#<anchor>`). */
+  /** Roadmap anchor for unbuilt modules (`/roadmap#<anchor>`). */
   anchor?: string
   phase?: OsPhase
-  /** What the module will do, shown as a tooltip on disabled entries. */
+  /** What the module will do, shown as a tooltip on roadmap entries. */
   hint?: string
 }
 
@@ -65,15 +70,17 @@ export const OS_NAV_GROUPS: OsNavGroup[] = [
   {
     title: 'Personal',
     items: [
-      { label: 'Overview', icon: LayoutDashboard, href: '/os' },
+      { label: 'Today', icon: LayoutDashboard, href: '/', hint: 'Personal dashboard' },
+      { label: 'Inbox', icon: Inbox, href: '/inbox', hint: 'Supabase quick capture' },
+      { label: 'Tasks', icon: ListChecks, href: '/tasks' },
+      { label: 'Projects', icon: Folder, href: '/projects' },
+      { label: 'Notes', icon: Notebook, href: '/notes' },
+      { label: 'Meetings', icon: Video, href: '/meetings', hint: 'Supabase agenda and action items' },
+      { label: 'People', icon: Users, href: '/contacts', hint: 'Contacts and companies' },
+      { label: 'Goals', icon: Target, href: '/goals' },
       { label: 'Career', icon: Briefcase, anchor: 'career', phase: 2, hint: 'Jobs, applications and interview pipeline' },
       { label: 'Freelance CRM', icon: Contact, anchor: 'crm', phase: 2, hint: 'Leads, proposals, contracts and invoices' },
-      { label: 'Projects', icon: Folder, href: '/os/projects' },
-      { label: 'Tasks', icon: ListChecks, href: '/os/tasks' },
       { label: 'Calendar', icon: CalendarDays, anchor: 'integrations', phase: 4, hint: 'Two-way Google Calendar sync' },
-      { label: 'Notes', icon: Notebook, href: '/os/notes' },
-      { label: 'Goals', icon: Target, href: '/os/goals' },
-      { label: 'People', icon: Users, href: '/os/contacts', hint: 'Contacts and companies' },
     ],
   },
   {
@@ -101,34 +108,30 @@ export const OS_NAV_GROUPS: OsNavGroup[] = [
   {
     title: 'System',
     items: [
-      { label: 'AI Assistant', icon: Sparkles, anchor: 'ai', phase: 6, hint: 'Natural-language actions over your own data' },
-      { label: 'Notifications', icon: Bell, href: '/os/notifications' },
-      { label: 'Search', icon: Search, href: '/os/search' },
-      { label: 'Activity', icon: Activity, href: '/os/activity' },
-      { label: 'Settings', icon: Settings, href: '/os/settings' },
+      { label: 'Search', icon: Search, href: '/search' },
+      { label: 'Notifications', icon: Bell, href: '/notifications' },
+      { label: 'Activity', icon: Activity, href: '/activity' },
+      { label: 'News', icon: Newspaper, href: '/news', hint: 'Supabase RSS feed' },
+      { label: 'Settings', icon: Settings, href: '/settings' },
+      { label: 'Roadmap', icon: Rocket, href: '/roadmap' },
+      { label: 'Legacy', icon: Archive, href: '/legacy', hint: 'The old Supabase screens, preserved' },
     ],
   },
 ]
 
-/** Footer entries that are not part of a module group. */
-export const OS_NAV_FOOTER: OsNavItem[] = [
-  { label: 'Roadmap', icon: Rocket, href: '/os/roadmap' },
-]
-
 /** href → true when the current path is that page or something below it. */
 export function isNavItemActive(href: string, pathname: string): boolean {
-  if (href === '/os') return pathname === '/os' || pathname === '/os/'
+  if (href === '/') return pathname === '/'
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
 export function roadmapHref(anchor: string): string {
-  return `/os/roadmap#${anchor}`
+  return `/roadmap#${anchor}`
 }
 
-/** Flat list of every Phase 1 destination, used by the command palette. */
+/** Flat list of every shipped destination, used by the command palette. */
 export const OS_PAGE_INDEX: { label: string; href: string; group: string }[] = [
   ...OS_NAV_GROUPS.flatMap((group) =>
     group.items.filter((item) => item.href).map((item) => ({ label: item.label, href: item.href!, group: group.title }))
   ),
-  ...OS_NAV_FOOTER.map((item) => ({ label: item.label, href: item.href!, group: 'System' })),
 ]

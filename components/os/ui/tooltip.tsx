@@ -5,6 +5,7 @@ import type { ComponentPropsWithoutRef, ReactNode } from 'react'
 
 import { cn } from '@/lib/os/cn'
 
+/** Tooltip = canvas + hairline + 2px radius, opacity only, no elevation. */
 export const TooltipProvider = TooltipPrimitive.Provider
 export const Tooltip = TooltipPrimitive.Root
 export const TooltipTrigger = TooltipPrimitive.Trigger
@@ -20,8 +21,8 @@ export function TooltipContent({
       <TooltipPrimitive.Content
         sideOffset={sideOffset}
         className={cn(
-          'z-50 max-w-xs overflow-hidden rounded-md border border-line bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-os-lg',
-          'data-[state=delayed-open]:animate-in data-[state=delayed-open]:fade-in-0 data-[state=delayed-open]:zoom-in-95',
+          'z-50 max-w-xs overflow-hidden rounded-os border border-line bg-background px-2.5 py-1.5 text-xs text-popover-foreground',
+          'data-[state=delayed-open]:animate-in data-[state=delayed-open]:fade-in-0',
           className
         )}
         {...props}

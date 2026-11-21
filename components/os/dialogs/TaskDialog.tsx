@@ -192,7 +192,7 @@ export function TaskDialog({
         />
         <DialogBody className="space-y-4">
           {banner ? (
-            <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            <p role="alert" className="rounded-os border border-line px-3 py-2 text-xs text-danger">
               {banner}
             </p>
           ) : null}
@@ -278,7 +278,7 @@ export function TaskDialog({
                     key={chip.label}
                     type="button"
                     onClick={() => patch({ due_date: chip.value })}
-                    className="os-tap-none rounded-md border border-line px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    className="os-tap-none rounded-os border border-line px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:border-line-strong hover:text-foreground"
                   >
                     {chip.label}
                   </button>
@@ -287,7 +287,7 @@ export function TaskDialog({
                   <button
                     type="button"
                     onClick={() => patch({ due_date: '' })}
-                    className="os-tap-none rounded-md border border-line px-1.5 py-0.5 text-[11px] text-faint transition-colors hover:bg-accent hover:text-foreground"
+                    className="os-tap-none rounded-os border border-line px-1.5 py-0.5 text-[11px] text-faint transition-colors hover:border-line-strong hover:text-foreground"
                   >
                     Clear
                   </button>
@@ -349,8 +349,8 @@ export function TaskDialog({
             />
           </Field>
 
-          <details className={cn('group rounded-lg border border-line px-3 py-2')}>
-            <summary className="cursor-pointer list-none text-[11px] uppercase tracking-wide text-muted-foreground">
+          <details className={cn('rounded-os border border-line px-3 py-2')}>
+            <summary className="os-label cursor-pointer list-none">
               Notes (private, not shown in lists)
             </summary>
             <CodeArea
@@ -361,15 +361,20 @@ export function TaskDialog({
             />
           </details>
 
-          <p className="text-[11px] text-faint">
+          <p className="os-micro">
             {dirty ? 'Unsaved changes' : 'Nothing changed yet'} · press ⌘↵ to save
           </p>
         </DialogBody>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>
+          <Button
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            disabled={pending}
+            className="rounded-os border border-line bg-transparent hover:bg-transparent"
+          >
             Cancel
           </Button>
-          <Button onClick={() => void submit()} loading={pending}>
+          <Button onClick={() => void submit()} loading={pending} className="rounded-os">
             {editing ? 'Save task' : 'Create task'}
           </Button>
         </DialogFooter>

@@ -111,37 +111,47 @@ export default function ProjectFormModal({
         </Field>
 
         <Field label="Status">
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
             {STATUSES.map((status) => (
               <button
                 key={status}
                 type="button"
+                aria-pressed={form.status === status}
                 onClick={() => setForm({ ...form, status })}
-                className={`min-h-[38px] rounded-lg border px-3 text-xs capitalize transition ${
-                  form.status === status
-                    ? 'border-[var(--accent-brand)] bg-[var(--accent-brand)]/15 text-[var(--accent-brand-hover)]'
-                    : 'border-[var(--fg-subtle)] text-[var(--fg-muted)] hover:text-[var(--fg-primary)]'
+                className={`os-tap-none flex min-h-[36px] items-center gap-2 text-[12px] transition-colors duration-150 ${
+                  form.status === status ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                {status}
+                <span
+                  className={`inline-block h-2 w-2 rounded-os border ${
+                    form.status === status ? 'border-foreground bg-foreground' : 'border-line'
+                  }`}
+                  aria-hidden="true"
+                />
+                <span className="os-label">{status}</span>
               </button>
             ))}
           </div>
         </Field>
 
+        {/* The colour is stored data, not decoration: pick it from mono hex chips. */}
         <Field label="Colour">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {PROJECT_COLORS.map((color) => (
               <button
                 key={color}
                 type="button"
                 aria-label={`Use ${color}`}
+                aria-pressed={form.color === color}
                 onClick={() => setForm({ ...form, color })}
-                style={{ background: color }}
-                className={`h-9 w-9 rounded-lg border-2 transition ${
-                  form.color === color ? 'border-[var(--fg-primary)] scale-110' : 'border-transparent'
+                className={`os-tap-none os-micro rounded-os border px-2 py-1 transition-colors duration-150 ${
+                  form.color === color
+                    ? 'border-foreground text-foreground'
+                    : 'border-line text-muted-foreground hover:border-line-strong hover:text-foreground'
                 }`}
-              />
+              >
+                {color}
+              </button>
             ))}
           </div>
         </Field>
@@ -161,7 +171,7 @@ export default function ProjectFormModal({
           {project && onDeleted ? (
             confirmDelete ? (
               <div className="flex items-center gap-2">
-                <span className="text-body-sm text-[var(--accent-critical)]">Delete project, tasks and milestones?</span>
+                <span className="text-[12px] text-danger">Delete project, tasks and milestones?</span>
                 <Button variant="danger" onClick={remove} loading={saving}>
                   Yes, delete
                 </Button>

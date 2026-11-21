@@ -40,13 +40,11 @@ function CopyButton({ text, label }: { text: string; label: string }) {
 
 function Notes({ items, tone }: { items: string[]; tone: 'warn' | 'bad' }) {
   if (!items.length) return null;
-  const color = tone === 'warn' ? 'text-[var(--accent-warn)]' : 'text-[var(--accent-critical)]';
+  const color = tone === 'warn' ? 'text-warning' : 'text-danger';
   return (
-    <ul className={`mt-1 space-y-0.5 text-body-sm ${color}`}>
+    <ul className={`os-micro mt-1 space-y-0.5 ${color}`}>
       {items.slice(0, 6).map((line, i) => (
-        <motion.li key={`${line}-${i}`} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2, delay: i * 0.03 }}>
-          {line}
-        </motion.li>
+        <li key={`${line}-${i}`}>{line}</li>
       ))}
       {items.length > 6 && <li>…and {items.length - 6} more</li>}
     </ul>
@@ -110,21 +108,17 @@ export default function ImportTasksModal({
     <Modal title={summary ? 'Import finished' : `Import tasks into ${projectName}`} onClose={onClose} size="full">
       {summary ? (
         <div className="space-y-4">
-          <motion.p
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-body text-[var(--fg-primary)]"
-          >
+          <p className="os-title text-foreground">
             {summary.created > 0
               ? `${summary.created} task${summary.created === 1 ? '' : 's'} added${
                   summary.categories.length ? ` across ${summary.categories.length} categor${summary.categories.length === 1 ? 'y' : 'ies'}` : ''
                 }.`
               : 'Nothing was added.'}
-          </motion.p>
+          </p>
           {summary.categories.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {summary.categories.map((category) => (
-                <span key={category} className="rounded bg-[var(--bg-elevated)] px-2 py-1 text-xs text-[var(--fg-muted)]">
+                <span key={category} className="os-label rounded-os border border-line px-2 py-0.5">
                   {category}
                 </span>
               ))}
@@ -142,7 +136,7 @@ export default function ImportTasksModal({
           <div className="flex flex-wrap items-center gap-2">
             <CopyButton text={IMPORT_EXAMPLE} label="Copy JSON format" />
             <CopyButton text={agentPrompt(projectName)} label="Copy prompt for an agent" />
-            <span className="text-body-sm text-[var(--fg-muted)]">Give the prompt to an agent, paste what comes back.</span>
+            <span className="os-micro">Give the prompt to an agent, paste what comes back.</span>
           </div>
 
           <Field label="Tasks JSON">
@@ -159,26 +153,33 @@ export default function ImportTasksModal({
 
           <AnimatePresence mode="wait">
             {parsed?.error ? (
-              <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <motion.div
+                key="error"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15, ease: [0.2, 0.8, 0.2, 1] }}
+              >
                 <ErrorBanner message={parsed.error} />
               </motion.div>
             ) : parsed ? (
               <motion.div
                 key="preview"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="rounded-lg border border-[var(--fg-subtle)] bg-[var(--bg-deep)] p-3"
+                transition={{ duration: 0.15, ease: [0.2, 0.8, 0.2, 1] }}
+                className="os-panel p-3"
               >
-                <p className="text-body text-[var(--fg-primary)]">{summarizeParse(parsed)}</p>
+                <p className="text-foreground">{summarizeParse(parsed)}</p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {byCategory.map(([category, count]) => (
-                    <span key={category} className="rounded bg-[var(--bg-elevated)] px-2 py-0.5 text-[11px] text-[var(--fg-muted)]">
-                      {category} · {count}
+                    <span key={category} className="os-label rounded-os border border-line px-2 py-0.5">
+                      {category} <span className="os-num">{count}</span>
                     </span>
                   ))}
                 </div>
-                <p className="mt-2 text-body-sm text-[var(--fg-muted)]">
+                <p className="os-micro mt-2">
                   {parsed.tasks.filter((t) => t.completed).length} already done ·{' '}
                   {parsed.tasks.filter((t) => t.due_date).length} with due dates
                 </p>
@@ -186,7 +187,7 @@ export default function ImportTasksModal({
                 <Notes items={parsed.warnings} tone="warn" />
               </motion.div>
             ) : (
-              <motion.div key="help" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-body-sm text-[var(--fg-muted)]">
+              <motion.div key="help" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15, ease: [0.2, 0.8, 0.2, 1] }} className="os-label">
                 <p>Expected fields:</p>
                 <pre className="markdown-body mt-1 whitespace-pre-wrap font-sans">{IMPORT_FIELDS_HELP}</pre>
               </motion.div>
@@ -195,8 +196,8 @@ export default function ImportTasksModal({
 
           {failure && <ErrorBanner message={failure} />}
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--fg-subtle)] pt-4">
-            <label className="flex items-center gap-2 text-body-sm text-[var(--fg-muted)]">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+            <label className="flex items-center gap-2 text-body-sm text-muted-foreground">
               <input
                 type="checkbox"
                 checked={allowDuplicates}

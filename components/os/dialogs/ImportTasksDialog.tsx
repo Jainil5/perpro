@@ -1,8 +1,9 @@
 'use client'
 
-import { Copy, Download, FileJson, ListChecks, TriangleAlert } from 'lucide-react'
+import { Copy, Download, FileJson, ListChecks } from 'lucide-react'
 import { useState } from 'react'
 
+import { cn } from '@/lib/os/cn'
 import { copyText } from '@/lib/clipboard'
 import { errorMessage } from '@/lib/os/client'
 import { generalError } from '@/lib/os/forms'
@@ -21,7 +22,6 @@ import { Field } from '../ui/label'
 import { CodeArea } from '../ui/textarea'
 import { Switch } from '../ui/switch'
 import { ProjectSelect } from '../pickers'
-import { Badge } from '../ui/badge'
 import { toastError, toastSuccess } from '../ui/toast'
 import { TASK_SCOPE } from './TaskDialog'
 
@@ -98,13 +98,13 @@ export function ImportTasksDialog({
           {banner ? (
             <p
               role="alert"
-              className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+              className="rounded-os border border-line px-3 py-2 text-xs text-danger"
             >
               {banner}
             </p>
           ) : null}
           {failed.length ? (
-            <ul className="os-mono space-y-0.5 text-[11px] text-destructive">
+            <ul className="os-mono space-y-0.5 text-[11px] text-danger">
               {failed.map((d, i) => (
                 <li key={`${d.field}-${i}`}>
                   {d.field ? `${d.field}: ` : ''}
@@ -115,13 +115,19 @@ export function ImportTasksDialog({
           ) : null}
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => void copy(IMPORT_EXAMPLE, 'Copied the JSON format')}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void copy(IMPORT_EXAMPLE, 'Copied the JSON format')}
+              className="rounded-os bg-transparent"
+            >
               <FileJson /> Copy JSON format
             </Button>
             <Button
               size="sm"
               variant="outline"
               onClick={() => void copy(agentPrompt(null), 'Copied the prompt for an agent')}
+              className="rounded-os bg-transparent"
             >
               <Copy /> Copy prompt for an agent
             </Button>
@@ -129,10 +135,11 @@ export function ImportTasksDialog({
               size="sm"
               variant="ghost"
               onClick={() => void copy(IMPORT_FIELDS_HELP, 'Copied the field reference')}
+              className="rounded-os"
             >
               <Download /> Copy field reference
             </Button>
-            <span className="text-[11px] text-faint">
+            <span className="os-micro ml-auto">
               {raw.trim() ? `${raw.trim().split(/\n/).length} lines ready` : 'Empty — paste or write JSON'}
             </span>
           </div>
@@ -152,7 +159,7 @@ export function ImportTasksDialog({
               aria-describedby="import-format-note"
             />
           </Field>
-          <p id="import-format-note" className="text-[11px] text-faint">
+          <p id="import-format-note" className="os-micro">
             The placeholder above is the exact accepted shape, trailing commas included — clear it and
             paste your own.
           </p>
@@ -174,10 +181,15 @@ export function ImportTasksDialog({
           {result ? <ImportSummary result={result} /> : null}
         </DialogBody>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => close(false)} disabled={create.pending}>
+          <Button
+            variant="ghost"
+            onClick={() => close(false)}
+            disabled={create.pending}
+            className="rounded-os border border-line bg-transparent hover:bg-transparent"
+          >
             {result ? 'Close' : 'Cancel'}
           </Button>
-          <Button onClick={() => void run()} loading={create.pending} disabled={!raw.trim()}>
+          <Button onClick={() => void run()} loading={create.pending} disabled={!raw.trim()} className="rounded-os">
             <ListChecks /> Import
           </Button>
         </DialogFooter>
@@ -192,29 +204,28 @@ export function ImportSummary({ result }: { result: ImportResult }) {
   const warnings = result.warnings ?? []
   if (!result.created && !rejected.length && !warnings.length && !result.duplicates) {
     return (
-      <p className="rounded-lg border border-line bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+      <p className="rounded-os border border-line px-3 py-2 text-xs text-muted-foreground">
         Nothing was created. Check the JSON against the format above.
       </p>
     )
   }
   return (
-    <div className="space-y-3 rounded-lg border border-line bg-muted/30 p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge tone="success">{result.created} created</Badge>
-        <Badge tone="neutral">{result.duplicates} duplicates</Badge>
-        <Badge tone={rejected.length ? 'danger' : 'outline'}>{rejected.length} rejected</Badge>
-        <Badge tone={warnings.length ? 'warning' : 'outline'}>{warnings.length} warnings</Badge>
+    <div className="min-w-0 space-y-4 rounded-os border border-line p-3">
+      <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1.5">
+        <Count n={result.created} label="created" />
+        <Count n={result.duplicates} label="duplicates" />
+        <Count n={rejected.length} label="rejected" tone={rejected.length ? 'text-danger' : undefined} />
+        <Count n={warnings.length} label="warnings" tone={warnings.length ? 'text-warning' : undefined} />
       </div>
       {rejected.length ? (
         <div>
-          <p className="os-eyebrow mb-1">Rejected</p>
+          <p className="os-label mb-1.5">Rejected</p>
           <ul className="space-y-1">
             {rejected.map((item) => (
               <li key={`${item.index}-${item.title ?? ''}`} className="flex gap-2 text-xs">
-                <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-destructive" />
+                <span className="os-mono shrink-0 text-[11px] text-danger">#{item.index}</span>
                 <span className="min-w-0">
-                  <span className="os-mono text-[11px] text-faint">#{item.index}</span>{' '}
-                  <span className="font-medium">{item.title || 'untitled'}</span>{' '}
+                  <span className="text-foreground">{item.title || 'untitled'}</span>{' '}
                   <span className="text-muted-foreground">{item.reason}</span>
                 </span>
               </li>
@@ -224,18 +235,24 @@ export function ImportSummary({ result }: { result: ImportResult }) {
       ) : null}
       {warnings.length ? (
         <div>
-          <p className="os-eyebrow mb-1">Warnings</p>
-          <ul className="space-y-1 text-xs text-muted-foreground">
+          <p className="os-label mb-1.5">Warnings</p>
+          <ul className="os-mono space-y-1 text-[11px] text-muted-foreground">
             {warnings.map((warning, i) => (
-              <li key={i} className="flex gap-2">
-                <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-warning" />
-                <span>{warning}</span>
-              </li>
+              <li key={i}>{warning}</li>
             ))}
           </ul>
         </div>
       ) : null}
     </div>
+  )
+}
+
+function Count({ n, label, tone }: { n: number; label: string; tone?: string }) {
+  return (
+    <span className="inline-flex items-baseline gap-1.5">
+      <span className={cn('os-mono text-[13px] text-foreground', tone)}>{n}</span>
+      <span className="os-label os-label-faint">{label}</span>
+    </span>
   )
 }
 
@@ -260,8 +277,8 @@ function SwitchRowish({
         className="mt-0.5"
       />
       <span className="min-w-0">
-        <span className="block text-[13px]">{label}</span>
-        <span className="block text-[11px] text-faint">{description}</span>
+        <span className="block text-[13px] text-foreground">{label}</span>
+        <span className="os-micro mt-0.5 block">{description}</span>
       </span>
     </label>
   )

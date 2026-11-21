@@ -6,6 +6,10 @@ import type { CSSProperties } from 'react'
 /**
  * Thin sonner wrapper so MyOS screens all raise toasts the same way and pick up
  * the `.os-root` tokens instead of sonner's defaults.
+ *
+ * Sonner styles its toast from its own CSS variables, so the overrides have to
+ * be important. The result is the app's chrome: canvas, one hairline, 2px
+ * radius, no elevation, and colour only on the semantic kinds.
  */
 export { toast }
 
@@ -24,19 +28,21 @@ export function OsToaster({ theme }: { theme: 'light' | 'dark' }) {
       toastOptions={{
         classNames: {
           toast:
-            'os-root !rounded-lg !border !border-line !bg-card !text-card-foreground !shadow-os-lg !text-[13px] group-[.destructive]:!border-destructive/40',
+            'os-root !rounded-os !border !border-line !bg-background !text-[13px] !shadow-none group-[.destructive]:!border-destructive/50',
+          title: '!text-foreground !font-medium',
           description: '!text-muted-foreground',
-          actionButton: '!bg-primary !text-primary-foreground !rounded-md !text-[12px]',
-          cancelButton: '!bg-muted !text-muted-foreground !rounded-md !text-[12px]',
+          actionButton: '!rounded-os !bg-primary !text-primary-foreground !text-[12px] !shadow-none',
+          cancelButton: '!rounded-os !border !border-line !bg-transparent !text-muted-foreground !text-[12px] !shadow-none',
+          closeButton: '!rounded-os !border !border-line !bg-transparent !text-muted-foreground',
           error: '!text-destructive',
           success: '!text-success',
-          info: '!text-info',
+          info: '!text-muted-foreground',
           warning: '!text-warning',
         },
       }}
       style={
         {
-          '--normal-bg': 'hsl(var(--os-card))',
+          '--normal-bg': 'hsl(var(--os-background))',
           '--normal-text': 'hsl(var(--os-foreground))',
           '--normal-border': 'hsl(var(--os-line))',
         } as CSSProperties

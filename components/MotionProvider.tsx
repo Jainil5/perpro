@@ -19,12 +19,14 @@ export default function MotionProvider({ children }: { children: React.ReactNode
 
   return (
     <MotionConfig
+      /* docs/DESIGN.md rule 7: one short ease, no springs. Nothing in this
+         language bounces or overshoots; movement is a 150ms opacity/colour move
+         on the same curve app/os.css gives every hover. */
       transition={{
-        type: 'spring',
-        stiffness: 400,
-        damping: 28,
+        duration: 0.15,
+        ease: [0.2, 0.8, 0.2, 1],
       }}
-      reducedMotion={reducedMotion ? 'user' : undefined}
+      reducedMotion={reducedMotion ? 'user' : 'never'}
     >
       {children}
     </MotionConfig>

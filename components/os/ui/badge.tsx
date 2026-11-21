@@ -6,23 +6,34 @@ import type { HTMLAttributes, ReactNode } from 'react'
 import { cn } from '@/lib/os/cn'
 import { enumLabel } from '@/lib/os/format'
 import type { Priority, ProjectStatus, Severity, TaskStatus } from '@/lib/os/types'
+import { StatusDot, type DotState, type DotTone } from '../marks'
 
+/**
+ * A chip in this language is a hairline around an uppercase tracked micro-label
+ * (docs/DESIGN.md §4, rule 1): no fill, and no hue unless the hue means
+ * something the API actually reported — overdue, received, failed.
+ *
+ * The tone keys are the screen contract; only their class strings changed. The
+ * `!` on every non-default line colour is deliberate: `app/os.css` paints
+ * `--os-line` on all borders inside `.os-root` with the same specificity as a
+ * Tailwind utility and a later place in the cascade, so a plain utility loses.
+ */
 const badgeVariants = cva(
-  'inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-medium leading-4 whitespace-nowrap [&_svg]:size-3 [&_svg]:shrink-0',
+  'inline-flex shrink-0 items-center gap-1 rounded-os border px-1.5 py-0.5 font-os-display text-[11px] font-medium uppercase leading-4 tracking-[0.14em] whitespace-nowrap [&_svg]:size-3 [&_svg]:shrink-0',
   {
     variants: {
       tone: {
-        neutral: 'border-line bg-muted/70 text-muted-foreground',
-        solid: 'border-transparent bg-primary text-primary-foreground',
-        outline: 'border-line-strong bg-transparent text-muted-foreground',
-        primary: 'border-primary/25 bg-primary/12 text-primary',
-        success: 'border-success/25 bg-success/12 text-success',
-        warning: 'border-warning/30 bg-warning/12 text-warning',
-        danger: 'border-destructive/30 bg-destructive/12 text-destructive',
-        info: 'border-info/25 bg-info/12 text-info',
-        ai: 'border-ai/25 bg-ai/12 text-ai',
+        neutral: 'border-line text-muted-foreground',
+        solid: '!border-primary bg-primary text-primary-foreground',
+        outline: '!border-line-faint text-faint',
+        primary: '!border-line-strong text-foreground',
+        success: '!border-success/40 text-success',
+        warning: '!border-warning/40 text-warning',
+        danger: '!border-destructive/40 text-destructive',
+        info: 'border-line text-muted-foreground',
+        ai: 'border-line text-muted-foreground',
       },
-      size: { sm: 'text-[10px] px-1 py-0', md: '' },
+      size: { sm: 'px-1 py-0 text-[10px] tracking-[0.1em]', md: '' },
     },
     defaultVariants: { tone: 'neutral', size: 'md' },
   }
@@ -81,12 +92,45 @@ export function toneFor(
   return table[value] ?? 'neutral'
 }
 
+/**
+ * Priority is a code, not a chip: `P1…P4` in mono (docs/DESIGN.md §4). The
+ * letter+number is the whole message, so it carries no hue.
+ */
+export const PRIORITY_CODE: Record<Priority, string> = {
+  urgent: 'P1',
+  high: 'P2',
+  medium: 'P3',
+  low: 'P4',
+}
+
 export function PriorityBadge({ value, className }: { value: string; className?: string }) {
+  const code = PRIORITY_CODE[value as Priority]
   return (
-    <Badge tone={toneFor(PRIORITY_TONE, value)} className={className}>
-      {enumLabel(value)}
-    </Badge>
+    <span
+      className={cn('os-mono shrink-0 text-[11px] tracking-[0.08em] text-muted-foreground', className)}
+      title={code ? `${enumLabel(value)} priority` : undefined}
+    >
+      {code ?? enumLabel(value)}
+    </span>
   )
+}
+
+/**
+ * Status reads through the shared 8px glyph (outline = open, half = in progress,
+ * filled = done) plus an uppercase micro-label. The tone tables survive as the
+ * bridge from an API enum to that glyph; only blocked/overdue/due-today/completed
+ * get a hue, because those are the states that ask something of you.
+ */
+const DOT_FOR_TONE: Record<string, { state: DotState; tone?: DotTone }> = {
+  success: { state: 'done' },
+  solid: { state: 'done' },
+  danger: { state: 'open', tone: 'critical' },
+  warning: { state: 'in_progress', tone: 'warning' },
+  primary: { state: 'in_progress' },
+  neutral: { state: 'open' },
+  outline: { state: 'archived' },
+  info: { state: 'open' },
+  ai: { state: 'open' },
 }
 
 export function StatusBadge({
@@ -98,22 +142,28 @@ export function StatusBadge({
   table: Record<string, VariantProps<typeof badgeVariants>['tone']>
   className?: string
 }) {
+  const mark = DOT_FOR_TONE[toneFor(table, value) ?? 'neutral'] ?? DOT_FOR_TONE.neutral
   return (
-    <Badge tone={toneFor(table, value)} className={className}>
-      {enumLabel(value)}
-    </Badge>
+    <span className={cn('inline-flex min-w-0 shrink-0 items-center gap-1.5 whitespace-nowrap', className)}>
+      <StatusDot state={mark.state} tone={mark.tone} title={enumLabel(value)} />
+      <span className="os-label truncate">{enumLabel(value)}</span>
+    </span>
   )
 }
 
+/**
+ * Severity reads through the shared 8px status glyph (components/os/marks.tsx)
+ * rather than a second dot implementation: a filled one means "this is done",
+ * a tinted outline means "this needs you", a plain outline means context.
+ */
 export function SeverityDot({ severity, className }: { severity: Severity; className?: string }) {
   const tone = toneFor(SEVERITY_TONE as Record<string, VariantProps<typeof badgeVariants>['tone']>, severity)
-  const color =
-    tone === 'danger'
-      ? 'bg-destructive'
-      : tone === 'warning'
-        ? 'bg-warning'
-        : tone === 'success'
-          ? 'bg-success'
-          : 'bg-info'
-  return <span aria-hidden className={cn('size-2 shrink-0 rounded-full', color, className)} />
+  return (
+    <StatusDot
+      state={tone === 'success' ? 'done' : 'open'}
+      tone={tone === 'danger' ? 'critical' : tone === 'warning' ? 'warning' : undefined}
+      title={enumLabel(severity)}
+      className={className}
+    />
+  )
 }

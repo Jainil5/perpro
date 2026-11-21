@@ -4,16 +4,30 @@ import type { HTMLAttributes, ReactNode } from 'react'
 
 import { cn } from '@/lib/os/cn'
 
+/**
+ * A panel in this language is a hairline on the canvas — `.os-panel` from
+ * app/os.css (1px line, 2px radius, no fill, no shadow). The header of a panel
+ * is an `.os-label` line, not a title block.
+ *
+ * `CardTitle` renders its text inside a span because `app/os.css` styles
+ * `.os-root h1/h2/h3` directly (display face, ink, tight tracking); a class on
+ * the heading itself would lose that specificity contest, a class on the child
+ * inherits nothing it should not.
+ */
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('rounded-xl border border-line bg-card text-card-foreground shadow-os', className)} {...props} />
+  return <div className={cn('os-panel min-w-0 text-foreground', className)} {...props} />
 }
 
 export function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('flex items-start justify-between gap-3 px-4 pt-4 pb-2', className)} {...props} />
+  return <div className={cn('flex items-start justify-between gap-3 border-b border-line px-3 py-2', className)} {...props} />
 }
 
-export function CardTitle({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
-  return <h3 className={cn('font-os-display text-[13px] font-semibold tracking-tight', className)} {...props} />
+export function CardTitle({ className, children, ...props }: HTMLAttributes<HTMLHeadingElement>) {
+  return (
+    <h3 className={cn('min-w-0', className)} {...props}>
+      <span className="os-label block truncate">{children}</span>
+    </h3>
+  )
 }
 
 export function CardDescription({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) {
@@ -21,14 +35,14 @@ export function CardDescription({ className, ...props }: HTMLAttributes<HTMLPara
 }
 
 export function CardContent({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('px-4 pb-4', className)} {...props} />
+  return <div className={cn('px-3 py-3', className)} {...props} />
 }
 
 export function CardFooter({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('flex flex-wrap items-center gap-2 border-t border-line px-4 py-3', className)} {...props} />
+  return <div className={cn('flex flex-wrap items-center gap-2 border-t border-line px-3 py-2.5', className)} {...props} />
 }
 
-/** Card with a title + action slot in the header — the shape MyOS panels use. */
+/** Panel with a title + action slot in the header — the shape MyOS screens use. */
 export function Panel({
   title,
   description,
@@ -51,18 +65,22 @@ export function Panel({
   return (
     <Card className={cn('flex h-full min-w-0 flex-col', className)}>
       {(title || action) && (
-        <CardHeader className={cn(dense && 'px-3.5 pt-3 pb-1.5')}>
+        <CardHeader className={cn(dense && 'px-3 py-1.5')}>
           <div className="min-w-0">
-            <CardTitle className="flex items-center gap-2">
-              {icon ? <span className="shrink-0 text-muted-foreground [&_svg]:size-3.5">{icon}</span> : null}
-              <span className="truncate">{title}</span>
-            </CardTitle>
+            <div className="flex min-w-0 items-center gap-2">
+              {icon ? (
+                <span aria-hidden className="os-label flex shrink-0 items-center [&_svg]:size-3.5">
+                  {icon}
+                </span>
+              ) : null}
+              {title ? <CardTitle>{title}</CardTitle> : null}
+            </div>
             {description ? <CardDescription>{description}</CardDescription> : null}
           </div>
           {action ? <div className="flex shrink-0 items-center gap-1">{action}</div> : null}
         </CardHeader>
       )}
-      <div className={cn('min-w-0 flex-1 px-4 pb-4', dense && 'px-3.5 pb-3', bodyClassName)}>{children}</div>
+      <div className={cn('min-w-0 flex-1 px-3 py-3', dense && 'px-3 py-2.5', bodyClassName)}>{children}</div>
     </Card>
   )
 }

@@ -1,20 +1,40 @@
-# PerPro + MyOS
+# PerPro
 
-One repository, two surfaces:
+One app. MyOS is not a second product — **PerPro *is* the OS**: the MyOS engine (FastAPI + SQLite
+behind the `/api/os/*` proxy, described in [docs/MYOS/ARCHITECTURE.md](docs/MYOS/ARCHITECTURE.md))
+runs the dashboard and the Tasks / Projects / Notes screens at their canonical URLs, with grouped
+navigation in a single shell.
 
-- **PerPro — Founder Command Center** (root `/`): quick capture, tasks, projects with JSON import, meetings, markdown notes with AI assist, aggregated AI news. Next.js + Tailwind + Supabase.
-- **MyOS — Personal & Business Operating System** (`/os`): the modular local-first command centre described in [docs/MYOS/ARCHITECTURE.md](docs/MYOS/ARCHITECTURE.md). Next.js + shadcn/ui frontend, **FastAPI** backend, **SQLite** via SQLAlchemy + Alembic.
+The screens that only ever existed on Supabase — **Inbox**, **Meetings**, **News** — stayed exactly
+where they were. The five Supabase screens that MyOS duplicated are preserved, untouched, under
+`/legacy/*` (each carries a banner pointing at its live equivalent):
 
-Both share one Next.js app. `app/(perpro)` and `app/(os)` are route groups, so every existing
-PerPro URL (`/`, `/tasks`, `/projects/…`, `/notes`, `/inbox`, `/meetings`, `/news`) is unchanged;
-MyOS lives under `/os` with its own shell, sidebar and light/dark theme.
+- **PerPro screens on Supabase** (`Next.js + Tailwind + Supabase`, `DEMO_MODE` supported): `/inbox`,
+  `/meetings`, `/news`, plus `/legacy/today`, `/legacy/tasks`, `/legacy/projects`,
+  `/legacy/projects/[id]`, `/legacy/notes`.
+- **MyOS screens** (`Next.js + shadcn/ui` frontend, **FastAPI** backend, **SQLite** via
+  SQLAlchemy + Alembic): `/`, `/tasks`, `/projects`, `/projects/[id]`, `/notes`, `/contacts`,
+  `/goals`, `/search`, `/notifications`, `/activity`, `/settings`, `/roadmap`.
+
+The old `/os/*` URLs are gone and answer **308** redirects to their canonical path
+(`/os/tasks?task=1` → `/tasks?task=1`, `/os` → `/`).
+
+Both screen sets wear one design language — the Studio—BA grammar specified in
+[docs/DESIGN.md](docs/DESIGN.md): near-black canvas, white ink, hairlines instead of cards, 2px
+radius, no shadows or blur, colour only for overdue / done / due-today, sentence-case display type,
+uppercase micro-labels and monospace for every number and date. It lives in three places:
+`app/os.css` (tokens + `.os-grid` / `.os-disc` / `.os-dial` / `.os-label` motifs),
+`tailwind.config.ts` (semantic utilities, hairline as the default border colour) and
+`components/os/marks.tsx` (the only implementation of the disc, grid, dial, status dot, clocks and
+corner micro-data). `app/globals.css` keeps PerPro's variable names but resolves them to the same
+tokens, so `/legacy/*`, `/inbox`, `/meetings` and `/news` look like the rest of the OS.
 
 ## MyOS quickstart
 
 ```bash
 make setup     # pip install -r backend/requirements.txt + npm install
 make dev       # FastAPI on :8000 (background) + Next.js on :3002
-open http://localhost:3002/os
+open http://localhost:3002/
 ```
 
 Or step by step, without make:
@@ -34,22 +54,29 @@ No credentials are required for anything in MyOS. The browser only ever talks to
 Container: `docker compose up` starts `api` (migrates then serves) and `web`, with the SQLite
 file in a named volume.
 
-### What Phase 1 does
+### What is where
 
-| Screen | Route |
-|---|---|
-| Personal dashboard — agenda, today's/overdue tasks, active projects with next action, milestones, notifications, recent notes, activity, rule-based insights, reorderable/hideable widgets, quick actions | `/os` |
-| Projects — filters, progress, create/edit, delete with type-to-confirm | `/os/projects` |
-| Project workspace — next action, kanban (drag) + table, milestones timeline, stats, project activity | `/os/projects/[id]` |
-| Tasks — status/priority/project/tag/due filters, search, sort, list + board, bulk actions, paging, recurring rollover, JSON import | `/os/tasks` |
-| Notes — category rail, tags, search, favourites, markdown editor + preview, relations and backlinks | `/os/notes` |
-| People — contacts with company join, tags, plus company CRUD | `/os/contacts` |
-| Goals — progress slider, target date, linked project | `/os/goals` |
-| Search — global, grouped and ranked (also ⌘K everywhere) | `/os/search` |
-| Notifications + reminders — derived, idempotent, mark read/dismiss, snooze | `/os/notifications` |
-| Activity — unified timeline grouped by day | `/os/activity` |
-| Settings — workspace defaults, theme, API health, demo seed/reset, full JSON export, data location | `/os/settings` |
-| Roadmap — what each later phase unlocks | `/os/roadmap` |
+| Screen | Route | Store |
+|---|---|---|
+| Personal dashboard — agenda, today's/overdue tasks, active projects with next action, milestones, notifications, recent notes, activity, rule-based insights, reorderable/hideable widgets, quick actions | `/` | MyOS |
+| Projects — filters, progress, create/edit, delete with type-to-confirm | `/projects` | MyOS |
+| Project workspace — next action, kanban (drag) + table, milestones timeline, stats, project activity | `/projects/[id]` | MyOS |
+| Tasks — status/priority/project/tag/due filters, search, sort, list + board, bulk actions, paging, recurring rollover, JSON import | `/tasks` | MyOS |
+| Notes — category rail, tags, search, favourites, markdown editor + preview, relations and backlinks | `/notes` | MyOS |
+| People — contacts with company join, tags, plus company CRUD | `/contacts` | MyOS |
+| Goals — progress slider, target date, linked project | `/goals` | MyOS |
+| Search — global, grouped and ranked | `/search` | MyOS |
+| Notifications + reminders — derived, idempotent, mark read/dismiss, snooze | `/notifications` | MyOS |
+| Activity — unified timeline grouped by day | `/activity` | MyOS |
+| Settings — workspace defaults, theme, API health, demo seed/reset, full JSON export, data location | `/settings` | MyOS |
+| Roadmap — what each later phase unlocks | `/roadmap` | MyOS |
+| Inbox — triage captures into tasks, notes or meetings | `/inbox` | Supabase |
+| Meetings — agenda + notes, AI action items | `/meetings` | Supabase |
+| News — AI + football feeds | `/news` | Supabase |
+| Legacy index — the preserved Supabase screens, with an honest note each | `/legacy` | Supabase |
+| Today / Tasks / Projects (+ project workspace) / Notes — the original PerPro screens, functionality untouched | `/legacy/today`, `/legacy/tasks`, `/legacy/projects`, `/legacy/projects/[id]`, `/legacy/notes` | Supabase |
+
+`/os/*` no longer exists: every old URL answers **308** and lands on its canonical path.
 
 Task import is deliberately forgiving — it accepts a bare array or `{"tasks": […]}`, markdown
 fences, prose around the JSON, trailing commas, `priority: "High"`, and aliases (`name`→title,
@@ -60,9 +87,9 @@ dialog can copy both the expected JSON shape and a prompt to hand an agent that 
 ### Verification
 
 ```bash
-cd backend && python3 -m pytest -q   # 368 passed — services, API contract, migrations, CLI
+cd backend && python3 -m pytest -q   # 370 passed — services, API contract, migrations, CLI
 npm test                             # 13 passed — PerPro import + implementation-brief logic
-npm run build                        # both apps type-check and compile
+npm run build                        # the one app type-checks and compiles
 ```
 
 Derived logic that is unit-tested rather than eyeballed: project progress
@@ -73,12 +100,13 @@ the deep-link target set, and the cascade rules on delete.
 
 ### MyOS docs
 
+[docs/DESIGN.md](docs/DESIGN.md) — the visual language, measured palette, token contract and component rules.
 [docs/MYOS/ARCHITECTURE.md](docs/MYOS/ARCHITECTURE.md) — layout, boundaries, conventions, theming, AI posture.
 [docs/MYOS/API.md](docs/MYOS/API.md) — the v1 contract every screen is built against.
 [docs/MYOS/DATA_MODEL.md](docs/MYOS/DATA_MODEL.md) — table-by-table schema, delete matrix, derived
 values, Postgres mapping, and the Phase 2–6 tables designed but not yet migrated.
 
-AI is optional and off by default (`MYOS_AI_ENABLED=0`); nothing in `/os` needs a model to work.
+AI is optional and off by default (`MYOS_AI_ENABLED=0`); no MyOS screen needs a model to work.
 Phases 2–6 (career pipeline, freelance CRM, finance and cost scenarios, Google/GitHub/Supabase
 integrations, business analytics, AI tool calling) are specified as additive migrations — the
 sidebar shows them as roadmap entries rather than fake screens until they exist.
@@ -102,23 +130,27 @@ Data resets when the server restarts. Live RSS refresh (`POST /api/news`) and th
 football fixtures still use the network. Remove the flag to go back to Supabase + a real
 AI provider.
 
-## Features
+## Supabase features
 
-- **Today** (`/`) — overdue + due-today tasks, next meeting, inbox preview, pinned notes, quick-capture bar.
+These are the original PerPro screens. The dashboard, task, project and note
+screens at the canonical URLs are now the MyOS ones (table above); the versions below are
+reachable at `/legacy/...` and still read and write Supabase.
+
+- **Today** (`/legacy/today`) — overdue + due-today tasks, next meeting, inbox preview, pinned notes, quick-capture bar.
 - **Cmd+K palette** — capture any thought to the Inbox from anywhere, or jump to any page / create new items.
 - **Inbox** (`/inbox`) — triage captures into tasks, notes, or meetings; dismiss the rest.
-- **Projects** (`/projects`) — one card per project with completion, overdue count and next due date; click through for the project workspace. `/projects/[id]` holds tasks (grouped by category, filterable by status/category, sortable by due date/priority/category/added), a **Schedule** panel of dated milestones with late/in-N-days markers, a per-category progress breakdown, and stats for progress, open, overdue and the next milestone. Add tasks by hand or **Import JSON**. Every task row has a **Prompt** button that copies a
+- **Projects** (`/legacy/projects`) — one card per project with completion, overdue count and next due date; click through for the project workspace. `/legacy/projects/[id]` holds tasks (grouped by category, filterable by status/category, sortable by due date/priority/category/added), a **Schedule** panel of dated milestones with late/in-N-days markers, a per-category progress breakdown, and stats for progress, open, overdue and the next milestone. Add tasks by hand or **Import JSON**. Every task row has a **Prompt** button that copies a
 complete implementation brief for it — project context, the task, its full notes, sibling
 tasks and the milestone it serves — ready to paste into any coding agent.
-- **Tasks** (`/tasks`) — priority, due dates, tags, search, all/open/done filters.
+- **Tasks** (`/legacy/tasks`) — priority, due dates, tags, search, all/open/done filters.
 - **Meetings** (`/meetings`) — agenda + notes; AI extracts action items straight into linked tasks.
-- **Notes** (`/notes`) — markdown with preview, tags, pinning, AI summarize and action-item extraction.
+- **Notes** (`/legacy/notes`) — markdown with preview, tags, pinning, AI summarize and action-item extraction.
 - **News** (`/news`) — two categories. **AI News**: server-side RSS aggregation from OpenAI, Google DeepMind, Hugging Face, TechCrunch AI, The Verge AI, Ars Technica AI, and Hacker News; cached + deduped in Supabase, auto-refreshes when older than 1 hour, filter by source, star or save items to notes. **Football**: opens seeded with the UCL top 10 (PSG, Barcelona, Real Madrid, Liverpool, Man City, Arsenal, Bayern, Inter, Dortmund, Atlético); follow/unfollow any club via search, see upcoming fixtures grouped by day and recent results with scores, via the free TheSportsDB API (`/api/football`, 5-minute server cache). Followed teams persist in the browser's localStorage.
 
 ## Project task import
 
 `POST /api/projects/import` with `{ project_id, raw, allow_duplicates }` (the Import JSON
-dialog in the project view calls it, and validates the same payload client-side before
+dialog in `/legacy/projects/[id]` calls it, and validates the same payload client-side before
 sending). The expected shape:
 
 ```json

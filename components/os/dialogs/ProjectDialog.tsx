@@ -17,7 +17,7 @@ import { Field } from '../ui/label'
 import { Input } from '../ui/input'
 import { Textarea } from '../ui/textarea'
 import { EnumSelect } from '../pickers'
-import { Progress } from '../ui/progress'
+import { HairlineBar } from '../marks'
 
 /** Cache prefixes every project write has to refresh. */
 export const PROJECT_SCOPE = ['/projects', '/tasks', '/milestones', '/dashboard', '/meta', '/activity', '/search', '/notes']
@@ -153,7 +153,7 @@ export function ProjectDialog({
           {banner ? (
             <p
               role="alert"
-              className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+              className="rounded-os border border-line px-3 py-2 text-xs text-danger"
             >
               {banner}
             </p>
@@ -226,19 +226,21 @@ export function ProjectDialog({
                   step={5}
                   value={progress}
                   onChange={(event) => patch({ manual_progress: event.target.value })}
-                  className="h-1.5 w-full min-w-0 cursor-pointer appearance-none rounded-full bg-muted accent-[hsl(var(--os-primary))] os-tap-none"
+                  className="h-[2px] w-full min-w-0 cursor-pointer appearance-none rounded-none bg-line-faint accent-foreground os-tap-none"
                   aria-label="Manual progress percentage"
                 />
-                <span className="os-num w-10 shrink-0 text-right text-xs">{progress}%</span>
+                <span className="os-mono w-10 shrink-0 text-right text-xs text-foreground">
+                  {progress}%
+                </span>
               </div>
               {editing ? (
-                <Progress
-                  value={autoProgress}
-                  showValue
-                  size="sm"
-                  className="pt-1"
-                  label="Progress calculated from tasks"
-                />
+                <div className="flex items-center gap-2.5 pt-2">
+                  <span className="os-label os-label-faint shrink-0">From tasks</span>
+                  <HairlineBar value={autoProgress} className="min-w-0 flex-1" />
+                  <span className="os-mono shrink-0 text-[11px] text-muted-foreground">
+                    {Math.round(autoProgress)}%
+                  </span>
+                </div>
               ) : null}
             </Field>
           </div>
@@ -282,17 +284,23 @@ export function ProjectDialog({
             </Field>
           </div>
 
-          <p className="text-[11px] text-faint">
+          <p className="os-micro">
             {dirty ? 'Unsaved changes' : 'Nothing changed yet'} · press ⌘↵ to save
           </p>
         </DialogBody>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={pending}>
+          <Button
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            disabled={pending}
+            className="rounded-os border border-line bg-transparent hover:bg-transparent"
+          >
             Cancel
           </Button>
           <Button
             onClick={() => void submit()}
             loading={pending}
+            className="rounded-os"
             onKeyDown={(event) => {
               if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) void submit()
             }}

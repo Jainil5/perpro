@@ -129,7 +129,7 @@ plain text).
 ### notification
 ```json
 { "id": "…", "kind": "task_overdue", "severity": "critical", "title": "2 tasks overdue",
-  "body": "…", "entity_type": "task", "entity_id": null, "href": "/os/tasks?filter=overdue",
+  "body": "…", "entity_type": "task", "entity_id": null, "href": "/tasks?filter=overdue",
   "read": false, "read_at": null, "dedupe_key": "task_overdue:…", "created_at": "…",
   "updated_at": "…" }
 ```
@@ -145,7 +145,7 @@ plain text).
 ```json
 { "id": "…", "verb": "completed", "entity_type": "task", "entity_id": "…",
   "entity_title": "Write migration notes", "summary": "Completed “Write migration notes”",
-  "project_id": "…", "href": "/os/projects/…", "actor": "owner", "created_at": "…" }
+  "project_id": "…", "href": "/projects/…", "actor": "owner", "created_at": "…" }
 ```
 
 ---
@@ -224,7 +224,7 @@ plain text).
 * `GET /search?q=&limit=8` →
 ```json
 { "query": "order",
-  "groups": [ { "type": "tasks", "label": "Tasks", "href": "/os/tasks?q=order",
+  "groups": [ { "type": "tasks", "label": "Tasks", "href": "/tasks?q=order",
                 "items": [ { "id", "title", "subtitle", "href", "badge" } ] } ],
   "total": 12 }
 ```
@@ -281,20 +281,26 @@ anything, milestones within 7 days, empty-projects (no tasks).
 
 ## Deep-link contract (`href` on activity, notifications, insights and search items)
 
-There is one link scheme, and it is query-based — the app has no `/os/tasks/[id]`,
-`/os/notes/[id]` or `/os/contacts/[id]` routes (record detail is a dialog over the list):
+There is one link scheme, and it is query-based — the app has no `/tasks/[id]`, `/notes/[id]`
+or `/contacts/[id]` routes (record detail is a dialog over the list). Routes are canonical:
+MyOS is not a sub-app, so nothing may be emitted with the retired `/os/` prefix.
 
 | record | href |
 |---|---|
-| task | `/os/tasks?task=<id>` |
-| note | `/os/notes?note=<id>` |
-| contact | `/os/contacts?contact=<id>` |
-| milestone | `/os/projects/<project_id>` |
-| project / goal | `/os/projects/<id>` / `/os/goals` |
-| reminder, notification, company, workspace | the list page that shows it (`/os/notifications`, `/os/settings`) |
-| cluster filters | `/os/tasks?filter=overdue`, `/os/projects?q=<term>` |
+| task | `/tasks?task=<id>` |
+| note | `/notes?note=<id>` |
+| contact | `/contacts?contact=<id>` |
+| milestone | `/projects/<project_id>` |
+| project / goal | `/projects/<id>` / `/goals` |
+| reminder, notification, company, workspace | the list page that shows it (`/notifications`, `/settings`) |
+| cluster filters | `/tasks?filter=overdue`, `/projects?q=<term>` |
+| search group headers | `/tasks?q=…`, `/projects?q=…`, `/notes?q=…`, `/contacts?q=…` |
 
-Never emit `/os/projects/None`: a missing project id falls back to the list page.
+`backend/app/services/links.py` is the only emitter, and `tests/test_links.py` sweeps every
+stored string to prove no href starts with `/os` and none contains the literal `None`; a missing
+project id falls back to the list page. `osHref()` in `lib/os/format.ts` normalises both the
+canonical form and the retired prefixed form, because `activity_logs.href` and
+`notifications.href` are historical snapshots written before the migration.
 A wrong HTTP method on a known path answers `404 {"code":"not_found","message":"method not
 allowed"}` — the API deliberately has no 405 body so the frontend has exactly one error shape.
 `GET /meta` `counts` keys are explicit (`tasks_open`, `tasks_overdue`, `tasks_due_today`,
