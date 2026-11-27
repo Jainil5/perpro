@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchAllNews } from '@/lib/news';
 import { serverClient } from '@/lib/supabase-server';
+import { withData } from '@/lib/data-guard';
+
 
 export const maxDuration = 60;
 
-export async function GET(req: NextRequest) {
+async function innerGET(req: NextRequest) {
   const auth = req.headers.get('authorization');
   if (!process.env.CRON_SECRET || auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
@@ -18,3 +20,5 @@ export async function GET(req: NextRequest) {
   }
   return NextResponse.json({ upserted: items.length });
 }
+
+export const GET = withData(innerGET);

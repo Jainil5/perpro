@@ -117,7 +117,9 @@ sidebar shows them as roadmap entries rather than fake screens until they exist.
 
 1. **Database** — paste [`supabase/schema.sql`](supabase/schema.sql) into Supabase Dashboard → SQL Editor → Run. Creates `inbox`, `tasks`, `meetings`, `notes`, `news_items`, plus `projects`,
 `project_tasks` and `project_milestones`. Safe to re-run.
-2. **Env** — `.env.local` already has the Supabase keys and AI provider config.
+2. **Env** — copy `.env.example` to `.env.local` and fill in the Supabase keys and AI provider
+   config. `.env.local` is gitignored, so it does not exist in a fresh clone (`make setup` writes a
+   minimal one for you).
 3. **Run** — `npm install && npm run dev` (use `-p 3002` if 3000 is taken).
 
 ### Demo mode (no credentials needed)
@@ -129,6 +131,12 @@ action-item buttons return deterministic offline text instead of calling a provi
 Data resets when the server restarts. Live RSS refresh (`POST /api/news`) and the
 football fixtures still use the network. Remove the flag to go back to Supabase + a real
 AI provider.
+
+If `DEMO_MODE` is off **and** there are no Supabase credentials, the data routes answer
+`503` with a message naming exactly which variable is missing and how to fix it
+(`lib/supabase-server.ts` → `dataConfigProblem()`, surfaced by `withData()` in
+`lib/data-guard.ts`), and the screens show that text instead of a bare "failed to fetch".
+This is why a fresh clone without `.env.local` is self-explanatory rather than broken.
 
 ## Supabase features
 

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { serverClient } from '@/lib/supabase-server';
+import { withData } from '@/lib/data-guard';
+
 
 const TABLES = [
   'inbox',
@@ -19,7 +21,7 @@ async function resolveTable(ctx: Ctx) {
   return TABLES.includes(table) ? table : null;
 }
 
-export async function GET(req: NextRequest, ctx: Ctx) {
+async function innerGET(req: NextRequest, ctx: Ctx) {
   const table = await resolveTable(ctx);
   if (!table) return NextResponse.json({ error: 'unknown table' }, { status: 404 });
   const order =
@@ -34,7 +36,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
   return NextResponse.json({ rows: data ?? [] });
 }
 
-export async function POST(req: NextRequest, ctx: Ctx) {
+async function innerPOST(req: NextRequest, ctx: Ctx) {
   const table = await resolveTable(ctx);
   if (!table) return NextResponse.json({ error: 'unknown table' }, { status: 404 });
   const values = await req.json().catch(() => null);
@@ -46,7 +48,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   return NextResponse.json({ ok: true });
 }
 
-export async function PATCH(req: NextRequest, ctx: Ctx) {
+async function innerPATCH(req: NextRequest, ctx: Ctx) {
   const table = await resolveTable(ctx);
   if (!table) return NextResponse.json({ error: 'unknown table' }, { status: 404 });
   const id = req.nextUrl.searchParams.get('id');
@@ -60,7 +62,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE(req: NextRequest, ctx: Ctx) {
+async function innerDELETE(req: NextRequest, ctx: Ctx) {
   const table = await resolveTable(ctx);
   if (!table) return NextResponse.json({ error: 'unknown table' }, { status: 404 });
   const id = req.nextUrl.searchParams.get('id');
@@ -69,3 +71,8 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ ok: true });
 }
+
+export const GET = withData(innerGET);
+export const POST = withData(innerPOST);
+export const PATCH = withData(innerPATCH);
+export const DELETE = withData(innerDELETE);

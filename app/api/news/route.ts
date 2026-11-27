@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { serverClient } from '@/lib/supabase-server';
 import { fetchAllNews } from '@/lib/news';
+import { withData } from '@/lib/data-guard';
+import { DataConfigError } from '@/lib/supabase-server';
 
 export const maxDuration = 60;
 const STALE_MS = 60 * 60 * 1000;
@@ -27,7 +29,7 @@ async function getItems() {
   return data ?? [];
 }
 
-export async function GET() {
+async function innerGET() {
   try {
     const db = serverClient();
     const { data: latest } = await db
@@ -50,6 +52,7 @@ export async function GET() {
     }
     return NextResponse.json({ items: await getItems(), refreshed, warning });
   } catch (e) {
+    if (e instanceof DataConfigError) throw e; // 503 with the fix step, not a 500
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'failed to load news' },
       { status: 500 }
@@ -57,14 +60,18 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+async function innerPOST() {
   try {
     const result = await refresh();
     return NextResponse.json({ ...result, items: await getItems() });
   } catch (e) {
+    if (e instanceof DataConfigError) throw e;
     return NextResponse.json(
       { error: e instanceof Error ? e.message : 'refresh failed' },
       { status: 502 }
     );
   }
 }
+
+export const GET = withData(innerGET);
+export const POST = withData(innerPOST);

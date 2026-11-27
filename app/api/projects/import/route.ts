@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { categoriesOf, parseProjectImport } from '@/lib/project-import';
 import { serverClient } from '@/lib/supabase-server';
+import { withData } from '@/lib/data-guard';
+
 
 export const maxDuration = 60;
 
@@ -10,7 +12,7 @@ const key = (title: string) => title.toLowerCase().replace(/\s+/g, ' ').trim();
  * POST { project_id, raw, allow_duplicates } — imports pasted JSON as project tasks.
  * Ids are always generated here, so the same payload can be replayed safely.
  */
-export async function POST(req: NextRequest) {
+async function innerPOST(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as {
     project_id?: unknown;
     raw?: unknown;
@@ -92,3 +94,5 @@ export async function POST(req: NextRequest) {
     categories: categoriesOf(parsed.tasks),
   });
 }
+
+export const POST = withData(innerPOST);

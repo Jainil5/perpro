@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { serverClient } from '@/lib/supabase-server';
+import { withData } from '@/lib/data-guard';
+
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -7,7 +9,7 @@ type Ctx = { params: Promise<{ id: string }> };
  * DELETE /api/projects/[id] — removes the project together with its tasks and
  * milestones. Done server-side so one click cannot leave orphan rows behind.
  */
-export async function DELETE(_req: NextRequest, ctx: Ctx) {
+async function innerDELETE(_req: NextRequest, ctx: Ctx) {
   const { id } = await ctx.params;
   const db = serverClient();
 
@@ -32,3 +34,5 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ ok: true, ...removed });
 }
+
+export const DELETE = withData(innerDELETE);

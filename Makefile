@@ -12,9 +12,12 @@ EXPORT ?= myos-export.json
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-12s\033[0m %s\n", $$1, $$2}'
 
-setup: ## install python + node dependencies
+setup: ## install dependencies and create .env.local if it is missing
 	$(PY) -m pip install --root-user-action=ignore -r backend/requirements.txt
 	$(NPM) install
+	@test -f .env.local && echo '  .env.local already present - leaving it alone.' || { printf '%s\n' '# local overrides - .env.example documents every option' 'DEMO_MODE=1' 'MYOS_API_URL=http://127.0.0.1:8000' > .env.local && echo '  wrote .env.local with DEMO_MODE=1: demo data, no credentials needed.'; }
+	@echo '  Want your own data instead? Set DEMO_MODE=0 plus SUPABASE_URL and'
+	@echo '  SUPABASE_SECRET_KEY in .env.local, then restart (see README.md).'
 
 api: ## run the FastAPI server on :$(API_PORT)
 	cd backend && $(PY) -m uvicorn app.main:app --reload --host 0.0.0.0 --port $(API_PORT)
