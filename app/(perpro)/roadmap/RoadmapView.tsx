@@ -29,8 +29,30 @@ const PHASES: { phase: OsPhase; title: string; summary: string; rows: PhaseRow[]
     title: PHASE_TITLES[2],
     summary: 'Job hunting and client work: the two pipelines that need their own state machines.',
     rows: [
-      { label: 'Career board', status: 'planned', detail: 'Roles, applications, interviews and offers as one funnel.' },
-      { label: 'Freelance CRM', status: 'planned', detail: 'Lead → proposal → contract → invoice, with follow-up tasks. Phase 3 already ships the invoice, rate and revenue side of it.' },
+      {
+        label: 'Career board',
+        status: 'live',
+        detail: 'Roles, applications, interviews and offers as one funnel. Only legal stage hops are offered, and the interview slot is built from today rather than typed.',
+        needs: 'GET /job-applications · POST /job-applications/{id}/transition',
+      },
+      {
+        label: 'Freelance CRM',
+        status: 'live',
+        detail: 'Lead → contacted → qualified → proposal → won, with the follow-up clock on every row. Winning opens the account in the same call, so nothing is entered twice.',
+        needs: 'GET /leads · POST /leads/{id}/transition · POST /leads/{id}/promote',
+      },
+      {
+        label: 'Customer accounts',
+        status: 'live',
+        detail: 'Contract window, renewal warnings, health and lifetime value per currency. Monthly revenue is derived from the live subscriptions billing that account, never typed in.',
+        needs: 'GET /clients · GET /clients/{id} · GET /crm/summary',
+      },
+      {
+        label: 'Meetings on records',
+        status: 'live',
+        detail: 'One calendar for applications, interviews, leads and accounts. /meetings stays the Supabase screen; every Phase 2 link points at the record that owns the meeting.',
+        needs: 'GET /meetings?entity_type=&entity_id=',
+      },
       {
         label: 'Contacts and companies',
         status: 'live',
@@ -136,7 +158,12 @@ const PHASES: { phase: OsPhase; title: string; summary: string; rows: PhaseRow[]
       { label: 'Business overview', status: 'planned', detail: 'Revenue, pipeline and delivery on one screen.' },
       { label: 'Products', status: 'planned', detail: 'SKUs, pricing, availability.' },
       { label: 'Analytics', status: 'planned', detail: 'Trends, cohorts and a monthly report you can send.' },
-      { label: 'Customers', status: 'planned', detail: 'Accounts with health and lifetime value.' },
+      {
+        label: 'Customers',
+        status: 'live',
+        detail: 'Shipped in Phase 2 as /customers — accounts, contracts, health and per-currency lifetime value. This phase adds the product and review layer around them.',
+        needs: 'GET /clients',
+      },
       { label: 'Reviews', status: 'planned', detail: 'Collect, answer and publish testimonials.' },
       {
         label: 'Export and activity',

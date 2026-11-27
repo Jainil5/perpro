@@ -118,3 +118,22 @@ export function generalError(error: OsApiError | null, fields: string[]): string
   if (error.code === 'validation_error' && error.details.some((d) => fields.includes(d.field))) return null
   return error.message
 }
+
+/**
+ * Copies the API's 422 field errors onto the inputs that own them, over an existing map so a
+ * locally-detected problem is not lost. A dotted path (`job_application.salary_min`) is trimmed
+ * to its last segment, which is the form key.
+ */
+export function mergeFieldErrors(
+  error: unknown,
+  previous: Record<string, string>
+): Record<string, string> {
+  const details = (error as { details?: Array<{ field?: string; message?: string }> }).details ?? []
+  const next = { ...previous }
+  for (const detail of details) {
+    if (!detail?.field || !detail.message) continue
+    const key = detail.field.split('.').pop()
+    if (key) next[key] = detail.message
+  }
+  return next
+}

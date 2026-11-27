@@ -14,7 +14,8 @@ where they were. The five Supabase screens that MyOS duplicated are preserved, u
   `/legacy/projects/[id]`, `/legacy/notes`.
 - **MyOS screens** (`Next.js + shadcn/ui` frontend, **FastAPI** backend, **SQLite** via
   SQLAlchemy + Alembic): `/`, `/tasks`, `/projects`, `/projects/[id]`, `/notes`, `/contacts`,
-  `/goals`, `/search`, `/notifications`, `/activity`, `/settings`, `/roadmap`.
+  `/goals`, `/search`, `/notifications`, `/activity`, `/settings`, `/roadmap`, the seven
+  `/finance/*` screens, and `/career`, `/crm`, `/customers`.
 
 The old `/os/*` URLs are gone and answer **308** redirects to their canonical path
 (`/os/tasks?task=1` → `/tasks?task=1`, `/os` → `/`).
@@ -41,7 +42,7 @@ Or step by step, without make:
 
 ```bash
 cd backend && python3 -m pip install -r requirements.txt
-python3 -m alembic upgrade head     # creates backend/data/myos.db and all 29 tables (19 Phase 1 + 10 Finance)
+python3 -m alembic upgrade head     # creates backend/data/myos.db and all 35 tables (19 Phase 1 + 10 Finance + 6 Career/CRM)
 python3 -m app.cli seed             # idempotent demo data (relative dates, always "alive"); on a database that predates Phase 3 the same call backfills the Finance rows
 python3 -m uvicorn app.main:app --port 8000
 cd .. && npm install && npm run dev -- -p 3002
@@ -70,6 +71,9 @@ file in a named volume.
 | Activity — unified timeline grouped by day | `/activity` | MyOS |
 | Settings — workspace defaults, theme, API health, demo seed/reset, full JSON export, data location | `/settings` | MyOS |
 | Roadmap — what each later phase unlocks | `/roadmap` | MyOS |
+| Career — the job funnel as a board and a table: eight stages with legal moves only, interview rounds with their own column, salary bands that answer one number or a range, the diary of what is scheduled, and stale applications called out by the server | `/career` | MyOS |
+| Freelance CRM — leads on a ladder (`new → contacted → qualified → proposal → won`, parked as `dormant`, closed as `lost`), follow-up due rail, weighted value per currency, and a promote that opens the account in one transaction | `/crm` | MyOS |
+| Customers — the account book: stage board, contract clock with the renewal warning window, MRR derived from live money (printed next to the stored figure, not instead of it), lifetime value, per-currency totals, tags | `/customers` | MyOS |
 | Finance overview — net, runway, burn, MRR, receivables, renewals, currency exposure, stale rates; a `Read totals in` control names the currency for every figure | `/finance` | MyOS |
 | Income calculator — gross → tax → take-home for `none`/`flat`/`slab`/`presumptive` regimes, two profiles side by side, plus the income ledger (expected → invoiced → paid, overdue days from the server, CSV export of the exact window you are looking at) | `/finance/income` | MyOS |
 | Currency converter — convert at a stored rate, the rate ledger with age and staleness, mixed-currency totals per code, hand-added rates (`sync` is opt-in and offline-safe) | `/finance/currency` | MyOS |
@@ -85,6 +89,12 @@ file in a named volume.
 
 `/os/*` no longer exists: every old URL answers **308** and lands on its canonical path.
 
+MyOS meetings are not a screen of their own: a meeting hangs off the record it was about (a lead, a
+client, a job application, a task), so it is created and read from that record's detail dialog and
+the next few appear on the Career diary. `/meetings` above is still the Supabase screen, and no
+Phase 2 link points at it — a meeting's `href` resolves to its owner, exactly like a milestone's
+resolves to its project.
+
 Task import is deliberately forgiving — it accepts a bare array or `{"tasks": […]}`, markdown
 fences, prose around the JSON, trailing commas, `priority: "High"`, and aliases (`name`→title,
 `deadline`/`due`→due_date, `done`/`status`→completed, `desc`→description). Ids are always
@@ -94,8 +104,8 @@ dialog can copy both the expected JSON shape and a prompt to hand an agent that 
 ### Verification
 
 ```bash
-cd backend && python3 -m pytest -q   # 607 passed — services, API contract, migrations, CLI
-npm test                             # 34 passed — PerPro import + implementation-brief logic
+cd backend && python3 -m pytest -q   # 607 — services, API contract, migrations, CLI
+npm test                             # 56 passed — PerPro import, brief logic, Phase 2/3 derived maths
 npm run build                        # the one app type-checks and compiles
 ```
 
@@ -111,18 +121,35 @@ of its own months, and the currency rule itself — a mixed book that has not be
 to answer in returns `null` for every figure that would need a rate, never a number whose currency
 nobody named.
 
+Phase 2 adds its own: `lib/os/career.test.ts` pins the application graph, what counts as closed,
+the dot a row renders as, and both shapes a salary band can take; `lib/os/crm.test.ts` pins the lead
+graph, `openLeadCount`, the per-currency tally merge (including figures that arrive with no code),
+`sumMrrByCurrency`, the renewal buckets, tag counting and every sort/default pair the three screens
+offer. Both graphs are asserted against the tables in `PHASE2_CAREER_CRM.md` §3, so a frontend that
+offers an illegal move fails a test instead of a user.
+
 ### MyOS docs
 
 [docs/DESIGN.md](docs/DESIGN.md) — the visual language, measured palette, token contract and component rules.
 [docs/MYOS/ARCHITECTURE.md](docs/MYOS/ARCHITECTURE.md) — layout, boundaries, conventions, theming, AI posture.
 [docs/MYOS/API.md](docs/MYOS/API.md) — the v1 contract every screen is built against.
 [docs/MYOS/DATA_MODEL.md](docs/MYOS/DATA_MODEL.md) — table-by-table schema, delete matrix, derived
-values, Postgres mapping, and the Phase 2–6 tables designed but not yet migrated.
+values, Postgres mapping, and the Phase 4–6 tables designed but not yet migrated.
+[docs/MYOS/PHASE3_FINANCE.md](docs/MYOS/PHASE3_FINANCE.md) — the money contract: every endpoint,
+every derivation, every deliberate deviation from §13.
+[docs/MYOS/PHASE2_CAREER_CRM.md](docs/MYOS/PHASE2_CAREER_CRM.md) — the same for Career & CRM:
+both state machines, the promote transaction, where each derived number comes from, and the deep
+links the three screens read.
 
 AI is optional and off by default (`MYOS_AI_ENABLED=0`); no MyOS screen needs a model to work.
 Phase 3 — Finance — is in: money math runs on your own rows, offline first, with no paid rate
-service and no bank connection. Phases 2 and 4–6 (career pipeline, freelance CRM,
-Google/GitHub/Supabase integrations, business analytics, AI tool calling) are specified as
+service and no bank connection. Phase 2 — Career & CRM — is next: `/career`, `/crm` and `/customers`
+are real screens over the real API, their tables arrive with migration `0004` along with the two
+`client_id` FKs Finance deferred, and `PHASE2_CAREER_CRM.md` is the contract they were built to.
+Until that migration is applied and its routers served, the three tabs answer a 404 and say so in
+words — "this API has no CRM endpoints yet" — rather than showing an empty board, and §10 of that
+file lists exactly what still has to land. Phases 4–6
+(Google/GitHub/Supabase integrations, business analytics, AI tool calling) are specified as
 additive migrations — the sidebar shows them as roadmap entries rather than fake screens until
 they exist.
 

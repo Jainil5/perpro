@@ -463,6 +463,25 @@ New tables follow §1 verbatim: `id`, `workspace_id` CASCADE + index, timestamps
 CHECK-constrained enums. `people`-module rows are Phase 1's `contacts`/`companies`; CRM grows
 out of them rather than replacing them, so a contact keeps being an address-book entry.
 
+**What `0004_phase_2_career_crm.py` creates:** the six tables below and the two FKs §13 deferred —
+`subscriptions.client_id` and `income_transactions.client_id`, each indexed with
+`ON DELETE SET NULL` — because a client's MRR and lifetime value are queries over those columns and
+had to arrive with the table they point at. It also rebuilds `activity_logs.verb` and
+`notifications.kind` with the Phase 2 value sets (`op.batch_alter_table` on SQLite,
+drop-then-add on PostgreSQL); rows and ids are untouched.
+
+**What it does not create:** `calendar_connections` and `calendar_events`, the last two tables
+below. They belong to the Phase 4 calendar sync — `token_reference` has nowhere to point until
+ARCHITECTURE.md §2's vault ships — so `meetings.calendar_event_id` is a plain `VARCHAR(36)` with no
+FK in this revision and gains one when its table exists.
+
+**Three deviations from the prose, all service-enforced rather than DDL-enforced:** `clients` has no
+`name` column (it is resolved from the company or contact on read, which is the whole point of
+"never duplicates contact details"); `meetings.entity_type` gets no CHECK, exactly like
+`reminders.entity_type`, because the allowed set is the polymorphic pair plus the Phase 2 records;
+and `clients.mrr` is created as written but never written to — the API's `mrr` is derived from live
+subscriptions, and the stored figure is echoed as `mrr_recorded` so a screen can show the difference.
+
 ### `job_applications` (career)
 | column | type | notes |
 |---|---|---|
@@ -546,11 +565,12 @@ Money is `NUMERIC(14,2)`, rates are `NUMERIC(18,6)`, always with an explicit `cu
 VARCHAR(8)` on the row; `workspaces.currency` is only the default for new rows. Nothing is ever
 converted silently: a converted figure is stored next to the original, never in place.
 
-**What `0003_phase_3_finance.py` does not create:** `subscriptions.client_id` and
-`income_transactions.client_id` as listed below. Both are FKs to `clients`, a Phase 2 table that
-does not exist yet, so they arrive with Phase 2 in its own migration instead of being
-reverse-engineered later. Every other column, index and CHECK in this section exists as written
-(the full deviation list is `PHASE3_FINANCE.md` §8).
+**What `0003_phase_3_finance.py` did not create:** `subscriptions.client_id` and
+`income_transactions.client_id`, both listed above. They are FKs to `clients`, a Phase 2 table that
+did not exist when the finance revision was written, so they arrived with Phase 2 in `0004` rather
+than being reverse-engineered into `0003` afterwards. Nothing else in this section is deferred:
+every other column, index and CHECK exists as written (the full deviation list is
+`PHASE3_FINANCE.md` §8).
 
 ### `income_profiles`
 One row per profile a scenario can model (`freelance`, `salary`, `mixed`): `id`,
@@ -721,8 +741,8 @@ why nothing AI-related lands before Phase 6.
 |---|---|---|
 | `0001` | 1 (built) | the 19 tables of §2–§6 + `alembic_version`; works on an empty SQLite file |
 | `0002` | 1 (built) | `goals.project_id` — one nullable column, its `SET NULL` FK and its index, via `op.batch_alter_table`; no row is rewritten and `0001` is untouched |
-| `00xx` | 2 | `job_applications`, `job_interviews`, `leads`, `clients`, `meetings`, `client_tags` |
-| `00xx` | 3 | `income_profiles`, `exchange_rates`, `services`, `service_plans`, `subscriptions`, `expense_categories`, `expenses`, `income_transactions`, `cost_scenarios`, `cost_scenario_items` |
+| `0003` | 3 (built) | the ten tables of §13 + the four Finance `notification.kind` values, rebuilt into `notifications.kind`'s CHECK |
+| `0004` | 2 (built) | the six tables of §12 — `job_applications`, `job_interviews`, `leads`, `clients`, `client_tags`, `meetings` — plus the two money FKs §13 deferred and the wider `activity_logs.verb` / `notifications.kind` CHECKs. It revises `0003`, so the finance phase was built first even though the prose is ordered by phase number |
 | `00xx` | 4 | `integrations`, `data_connections`, `integration_runs`, `calendar_connections`, `calendar_events` |
 | `00xx` | 5 | `businesses`, `products`, `analytics_metrics`, `reviews` |
 | `00xx` | 6 | `assistant_runs` (only if the assistant needs it) |

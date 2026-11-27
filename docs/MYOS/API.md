@@ -33,9 +33,12 @@ milestone.status: open | done
 reminder.status : pending | done
 goal.status     : active | completed | abandoned
 contact.kind    : client | prospect | partner | vendor | mentor | personal | other
-notification.kind: task_overdue | task_due | milestone | reminder | project_stalled | system
+notification.kind: task_overdue | task_due | milestone | reminder | project_stalled | system |
+                 subscription_renewing | expense_recurring_due | income_overdue | rate_stale |
+                 interview_upcoming | application_stale | lead_follow_up | client_contract_end
 notification.severity: info | warning | critical
-activity.verb   : created | updated | completed | reopened | deleted | commented | moved
+activity.verb   : created | updated | completed | reopened | deleted | commented | moved |
+                 transitioned | promoted
 source          : user | demo | import | ai
 member.role     : owner | admin | member | viewer
 note_relation.target_type: task | note | project | milestone | contact | company | goal
@@ -54,6 +57,19 @@ scenario.kind     : personal | business | hybrid
 scenario.status   : draft | active | archived
 scenario.item.direction: income | cost
 scenario.item.recurrence: none | weekly | monthly | quarterly | yearly | one_time
+
+job.application.status : saved | applied | screening | interview | offer | hired | rejected | withdrawn
+job.application.channel: referral | job_board | recruiter | website | event | other
+job.interview.type     : phone | video | onsite | technical | hr | other
+job.interview.status   : scheduled | completed | cancelled | no_show
+job.interview.outcome  : positive | neutral | negative | pending
+lead.status            : new | contacted | qualified | proposal | won | lost | dormant
+lead.origin            : website | referral | inbound | outbound | event | social | other
+client.stage           : onboarding | active | at_risk | churned | archived
+client.health          : green | amber | red | unknown
+meeting.status         : scheduled | completed | cancelled | no_show
+meeting.entity_type    : task | note | project | milestone | contact | company | goal |
+                         job_application | lead | client
 ```
 
 These values are copied from the running `GET /meta`; the served list is authoritative and the
@@ -65,7 +81,8 @@ under `enums` (keyed exactly as `project.status`, `task.status`, …) plus live 
 `counts` (`projects`, `tasks`, `tasks_open`, `tasks_overdue`, `tasks_due_today`, `tasks_done`,
 `milestones`, `notes`, `contacts`, `companies`, `tags`, `goals`, `reminders`, `notifications`,
 `activity`, plus the Phase 3 tables `expenses`, `income`, `subscriptions`, `services` and
-`scenarios`). The frontend's selects, chips and badges all read from there.
+`scenarios`, and the Phase 2 tables `applications`, `interviews`, `leads`, `clients` and
+`meetings`). The frontend's selects, chips and badges all read from there.
 
 The frontend must not invent other values; unknown values from the API render as the raw string.
 
@@ -246,6 +263,9 @@ plain text).
   Searches tasks, projects, notes, milestones, contacts, companies. SQLite `LIKE` on
   title/name/description/content, case-insensitive, ranked: exact › prefix › substring.
   `q` shorter than 2 chars ⇒ `{ "groups": [], "total": 0 }`.
+  Phase 2 extends the same response with the `applications`, `interviews`, `leads`, `clients` and
+  `meetings` groups; their header hrefs are already in the link map (`links.py:_SEARCH_PAGES`), and
+  the search service is the piece that still has to reach the new tables.
 
 ### Dashboard
 * `GET /dashboard?today=YYYY-MM-DD` →
@@ -320,6 +340,62 @@ naming a target: the API then converts through the user's own stored rates and e
 A client that sends no `currency` must be able to render `null` — the frontend shows an em dash plus
 the per-code split, never a guessed number.
 
+### Career & CRM (Phase 2)
+
+The job funnel, the lead pipeline, the customer book and the meetings that hang off both are
+specified end to end in [PHASE2_CAREER_CRM.md](PHASE2_CAREER_CRM.md) — endpoint by endpoint, with
+both state machines and the provenance of every derived number. The short version, all under
+`/api/v1` and reached by the browser as `/api/os/v1/*`:
+
+* `GET|POST /job-applications`, `GET|PATCH|DELETE /job-applications/{id}`,
+  `POST /job-applications/{id}/transition` — the hiring funnel. `GET` one row embeds its
+  interviews; the board's columns are the eight application statuses, and a legal hop is a
+  `PATCH`-equivalent action while an illegal one is a 409 that names the legal set.
+  `GET /job-applications/{id}` also embeds `meetings`, the next three on the calendar for that row.
+* `GET|POST /job-interviews`, `PATCH|DELETE /job-interviews/{id}` — `interviewer_ids` is an array
+  on the wire; the single `|`-joined column is the storage detail behind it.
+* `GET /career/summary?today=&currency=` — pipeline count, per-currency value, interviews due,
+  and the stale-application list. Derived per request.
+* `GET|POST /leads` (filters `status`, `origin`, `company_id`, `contact_id`, `score_min`, `q`),
+  `GET|PATCH|DELETE /leads/{id}`, `POST /leads/{id}/transition`, `POST /leads/{id}/promote` —
+  the lead ladder, and the one transition that creates another row: `promote` opens the account,
+  marks the lead `won` and writes both activity rows in one transaction. A second promote is a 409.
+  `last_touch_at` is stamped by the server and is not a request-body field.
+* `GET /crm/summary?today=&currency=` — open count, weighted value, follow-ups, average
+  time-to-win, all tallies per currency.
+* `GET|POST /clients` (filters `stage`, `health`, `tag`, `company_id`, `q`, `currency`;
+  `sort=name|contract_end|mrr|created`), `GET|PATCH|DELETE /clients/{id}` — the customer book.
+  `stage` and `health` are ordinary fields, so there is no action endpoint behind them.
+* `GET|POST /meetings`, `GET|PATCH|DELETE /meetings/{id}` (filters `status`, `entity_type`,
+  `entity_id`, `start`, `end`, `q`) — one calendar for every screen. `ends_at` is required and
+  must follow `starts_at`; the entity pair is both-or-neither, and `entity_id` alone is a 422
+  naming `query.entity_type`.
+
+**Two numbers that look alike and are not.** `clients.mrr_recorded` is the stored column and the
+derived `mrr` is the same maths `GET /finance/summary` uses over that client's income and
+subscriptions; a detail page prints both and the difference between them is information, not noise.
+Neither is ever summed across currencies — see the currency rule above.
+
+*Status while Phase 2 lands*: the surface above is implemented in the backend's own pass — the
+models, services and migration `0004` are written and `career`/`crm` are mounted in
+`app/api/v1/__init__.py` — but three things still stand between it and a working screen, and they
+are worth listing because each one changes what a browser actually sees:
+
+* `GET /meta` `counts` (`services/context.py:workspace_counts`) has no `applications`, `interviews`,
+  `leads`, `clients` or `meetings` keys, and `services/search.py` does not read the new tables even
+  though `links.py:_SEARCH_PAGES` already names their headers.
+* `demo.seed` creates no Phase 2 rows: `_DEMO_CLIENTS` is a list of *companies* the Finance backfill
+  points at, not `clients`. Gate 5 of `PHASE2_CAREER_CRM.md` §10 is therefore unmet — an empty
+  install shows empty boards.
+* A dev database that predates the phase is stamped `0002`, so the tables do not exist yet. Until it
+  is migrated, every one of these paths answers `404 not_found`, and the three screens render their
+  deliberate "this API has no CRM endpoints yet" state instead of an empty board. That is the honest
+  failure, not a missing feature.
+
+`PHASE2_CAREER_CRM.md` §10 keeps the running list. Nothing in this section is verified end to end
+until the routers are reachable, the counts and search groups are served, the seed has rows, and
+`python3 -m pytest -q` is green against `0004`.
+
 ### System / settings
 * `GET /export` → `application/json` full data dump `{ "exported_at", "workspace", "tables": {…} }`
 * `POST /demo/seed` → `{ "created": {…counts…}, "skipped": bool }` — idempotent: if demo rows
@@ -335,7 +411,9 @@ the per-code split, never a guessed number.
    `limit` and `offset`, and the six paged Finance lists (`/expenses`, `/income`, `/subscriptions`,
    `/services`, `/service-plans`, `/exchange-rates`) always do; the unpaginated ones
    (`/expense-categories`, `/income-profiles`, `/cost-scenarios`, `/currencies`) carry no page
-   fields, so a client must not read `limit` there.
+   fields, so a client must not read `limit` there. Every Phase 2 list is paged by contract, so
+   `/job-applications`, `/job-interviews`, `/leads`, `/clients` and `/meetings` echo both — their
+   services already return `(rows, total)` and the router wraps them.
 2. A missing FK target (`project_id` pointing elsewhere) is a `422`, not a silent `null`.
 3. `updated_at` changes on every write, so "recent activity" ordering is stable.
 4. `GET` requests are read-only; they must never create notifications (that happens in
@@ -357,8 +435,12 @@ MyOS is not a sub-app, so nothing may be emitted with the retired `/os/` prefix.
 | reminder, notification, company, workspace | the list page that shows it (`/notifications`, `/settings`) |
 | expense / income transaction / subscription | `/finance/expenses?expense=<id>`, `/finance/income?income=<id>`, `/finance/subscriptions?sub=<id>` |
 | service / cost scenario / expense category | `/finance/services?service=<id>`, `/finance/scenarios?scenario=<id>`, `/finance/expenses?category=<id>` |
+| job application / interview | `/career?app=<id>`, `/career?interview=<id>` |
+| lead | `/crm?lead=<id>` |
+| client | `/customers?client=<id>` |
+| meeting | the **owning** record's href: a meeting has no page of its own, exactly like a milestone opens its project. An ownerless meeting has no link |
 | cluster filters | `/tasks?filter=overdue`, `/projects?q=<term>` |
-| search group headers | `/tasks?q=…`, `/projects?q=…`, `/notes?q=…`, `/contacts?q=…` |
+| search group headers | `/tasks?q=…`, `/projects?q=…`, `/notes?q=…`, `/contacts?q=…`, `/career?q=…`, `/crm?q=…`, `/customers?q=…` |
 
 `backend/app/services/links.py` is the only emitter, and `tests/test_links.py` sweeps every
 stored string to prove no href starts with `/os` and none contains the literal `None`; a missing

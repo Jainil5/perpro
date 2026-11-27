@@ -35,9 +35,25 @@ export const CANONICAL_ENUMS: EnumSet = {
     'expense_recurring_due',
     'income_overdue',
     'rate_stale',
+    // Phase 2 · Career & CRM (docs/MYOS/PHASE2_CAREER_CRM.md §5)
+    'interview_upcoming',
+    'application_stale',
+    'lead_follow_up',
+    'client_contract_end',
   ],
   notification_severity: ['info', 'warning', 'critical'],
-  activity_verb: ['created', 'updated', 'completed', 'reopened', 'deleted', 'commented', 'moved'],
+  activity_verb: [
+    'created',
+    'updated',
+    'completed',
+    'reopened',
+    'deleted',
+    'commented',
+    'moved',
+    // Phase 2 · a funnel hop and a win are their own verbs, not a generic `updated`
+    'transitioned',
+    'promoted',
+  ],
   goal_status: ['active', 'completed', 'abandoned'],
   milestone_status: ['open', 'done'],
   reminder_status: ['pending', 'done'],
@@ -57,6 +73,40 @@ export const CANONICAL_ENUMS: EnumSet = {
   scenario_kind: ['personal', 'business', 'hybrid'],
   scenario_status: ['draft', 'active', 'archived'],
   scenario_item_direction: ['income', 'cost'],
+  /* Phase 2 · Career & CRM (docs/MYOS/PHASE2_CAREER_CRM.md §3) */
+  job_application_status: [
+    'saved',
+    'applied',
+    'screening',
+    'interview',
+    'offer',
+    'hired',
+    'rejected',
+    'withdrawn',
+  ],
+  job_application_channel: ['referral', 'job_board', 'recruiter', 'website', 'event', 'other'],
+  job_interview_type: ['phone', 'video', 'onsite', 'technical', 'hr', 'other'],
+  job_interview_status: ['scheduled', 'completed', 'cancelled', 'no_show'],
+  job_interview_outcome: ['positive', 'neutral', 'negative', 'pending'],
+  lead_status: ['new', 'contacted', 'qualified', 'proposal', 'won', 'lost', 'dormant'],
+  lead_origin: ['website', 'referral', 'inbound', 'outbound', 'event', 'social', 'other'],
+  client_stage: ['onboarding', 'active', 'at_risk', 'churned', 'archived'],
+  client_health: ['green', 'amber', 'red', 'unknown'],
+  meeting_status: ['scheduled', 'completed', 'cancelled', 'no_show'],
+  // `meeting.entity_type` is a polymorphic tag with no CHECK, exactly like `reminders`:
+  // Phase 1's targets plus the Phase 2 records, and never `meeting` itself.
+  meeting_entity_type: [
+    'task',
+    'note',
+    'project',
+    'milestone',
+    'contact',
+    'company',
+    'goal',
+    'job_application',
+    'lead',
+    'client',
+  ],
 }
 
 /** Kanban columns, in board order. `dropped` is shown in list views only. */

@@ -6,7 +6,8 @@ import { useMemo, useState } from 'react'
 import { cn } from '@/lib/os/cn'
 import { useResource } from '@/lib/os/hooks'
 import { enumLabel } from '@/lib/os/format'
-import type { Company, ListResponse, NoteTag, Project } from '@/lib/os/types'
+import type { Company, Contact, ListResponse, NoteTag, Project } from '@/lib/os/types'
+import type { Client } from '@/lib/os/crm'
 import { Option, Select, SelectContent, SelectTrigger, SelectValue } from './ui/select'
 
 /** Every project in one request — pickers are deliberately small lists. */
@@ -16,6 +17,16 @@ export function useProjectOptions(enabled = true) {
 
 export function useCompanyOptions(enabled = true) {
   return useResource<ListResponse<Company>>(enabled ? '/companies' : null, { limit: 200 })
+}
+
+/** People are picked by id in Phase 2 (recruiter, hiring manager, lead contact, client contact). */
+export function useContactOptions(enabled = true) {
+  return useResource<ListResponse<Contact>>(enabled ? '/contacts' : null, { limit: 200, sort: 'name' })
+}
+
+/** Accounts are picked by id for income rows and subscriptions (Phase 2 anchors the money to a client). */
+export function useClientOptions(enabled = true) {
+  return useResource<ListResponse<Client>>(enabled ? '/clients' : null, { limit: 200, sort: 'name' })
 }
 
 export function useTagOptions(enabled = true) {
@@ -99,6 +110,153 @@ export function CompanySelect({
         ))}
       </SelectContent>
     </Select>
+  )
+}
+
+/**
+ * A person picker over the whole contact list. Empty list says where to add people
+ * rather than presenting an unexplained blank dropdown.
+ */
+export function ContactSelect({
+  value,
+  onChange,
+  id,
+  placeholder = 'No person',
+  emptyLabel,
+  disabled,
+  className,
+}: {
+  value: string | null
+  onChange: (next: string | null) => void
+  id?: string
+  placeholder?: string
+  emptyLabel?: string
+  disabled?: boolean
+  className?: string
+}) {
+  const contacts = useContactOptions()
+  const rows = contacts.data?.items ?? []
+  return (
+    <Select
+      value={value ?? '__none'}
+      onValueChange={(next) => onChange(next === '__none' ? null : next)}
+      disabled={disabled}
+    >
+      <SelectTrigger id={id} className={cn('rounded-os bg-transparent', className)}>
+        <SelectValue placeholder={contacts.loading ? 'Loading people…' : placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        <Option value="__none">{placeholder}</Option>
+        {rows.length === 0 && !contacts.loading ? (
+          <Option value="__empty" disabled>
+            {emptyLabel ?? 'No contacts yet — add them under People'}
+          </Option>
+        ) : null}
+        {rows.map((contact) => (
+          <Option key={contact.id} value={contact.id}>
+            {contact.name}
+            {contact.company ? ` · ${contact.company}` : ''}
+          </Option>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+
+/**
+ * Account picker over `/clients`. A client's display name is resolved by the API (company, else
+ * contact), so the option shows what the CRM screens show; `hint` adds the stage so two accounts
+ * with similar names stay distinguishable.
+ */
+export function ClientSelect({
+  value,
+  onChange,
+  id,
+  placeholder = 'No account',
+  emptyLabel,
+  disabled,
+  className,
+}: {
+  value: string | null
+  onChange: (next: string | null) => void
+  id?: string
+  placeholder?: string
+  emptyLabel?: string
+  disabled?: boolean
+  className?: string
+}) {
+  const clients = useClientOptions()
+  const rows = clients.data?.items ?? []
+  return (
+    <Select
+      value={value ?? '__none'}
+      onValueChange={(next) => onChange(next === '__none' ? null : next)}
+      disabled={disabled}
+    >
+      <SelectTrigger id={id} className={cn('rounded-os bg-transparent', className)}>
+        <SelectValue placeholder={clients.loading ? 'Loading accounts…' : placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        <Option value="__none">{placeholder}</Option>
+        {rows.length === 0 && !clients.loading ? (
+          <Option value="__empty" disabled>
+            {emptyLabel ?? 'No accounts yet — win a lead under CRM'}
+          </Option>
+        ) : null}
+        {rows.map((client) => (
+          <Option key={client.id} value={client.id}>
+            {client.name || 'Untitled account'}
+            {client.stage && client.stage !== 'active' ? ` · ${enumLabel(client.stage)}` : ''}
+          </Option>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+
+/**
+ * Multi-pick over people, for `interviewer_ids`. Hairline chips rather than a native
+ * multiselect: one tap toggles, and the chosen set is legible without scrolling a
+ * list box. Ordering is selection order, which is how the round's panel reads.
+ */
+export function ContactMultiSelect({
+  value,
+  onChange,
+  options,
+  placeholder = 'Nobody picked',
+  className,
+}: {
+  value: string[]
+  onChange: (next: string[]) => void
+  options: Array<{ id: string; name: string }>
+  placeholder?: string
+  className?: string
+}) {
+  return (
+    <div className={cn('flex min-w-0 flex-wrap items-center gap-1.5', className)}>
+      {options.length === 0 ? <span className="os-micro">{placeholder}</span> : null}
+      {options.map((option) => {
+        const picked = value.includes(option.id)
+        return (
+          <button
+            key={option.id}
+            type="button"
+            aria-pressed={picked}
+            onClick={() =>
+              onChange(picked ? value.filter((v) => v !== option.id) : [...value, option.id])
+            }
+            className={cn(
+              'os-tap-none rounded-os border px-1.5 py-0.5 text-[11px] transition-colors',
+              picked
+                ? 'border-line-strong text-foreground'
+                : 'border-line text-faint hover:border-line-strong hover:text-muted-foreground'
+            )}
+          >
+            {option.name}
+          </button>
+        )
+      })}
+    </div>
   )
 }
 

@@ -203,6 +203,11 @@ export interface Subscription {
   id: string;
   plan_id: string | null;
   company_id: string | null;
+  /**
+   * The Phase 2 account this commitment bills, id only — see
+   * {@link IncomeTransaction.client_id} for why there is no nested `client`.
+   */
+  client_id?: string | null;
   status: SubscriptionStatus;
   started_on: string;
   renews_on: string | null;
@@ -297,6 +302,13 @@ export interface IncomeTransaction {
   id: string;
   subscription_id: string | null;
   service_id: string | null;
+  /**
+   * The Phase 2 account this inflow belongs to. `GET /income?client_id=` filters on it and
+   * `POST`/`PATCH` accept it, but the payload carries the id only — there is no nested `client`
+   * echo, because a client's `name` is derived from its company/contact and would make the money
+   * services depend on the CRM service. Map id → name with `useClientOptions()`.
+   */
+  client_id?: string | null;
   label: string;
   amount: number;
   currency: string;
@@ -631,6 +643,11 @@ export interface IncomeTransactionInput {
   status?: IncomeStatus
   service_id?: string | null
   subscription_id?: string | null
+  /**
+   * Send it on `PATCH` to move or detach the row: the API distinguishes "absent" from
+   * `null` here, so `client_id: null` genuinely clears the link.
+   */
+  client_id?: string | null
   invoice_number?: string | null
   method?: IncomeMethod | null
   notes?: string | null
@@ -673,6 +690,8 @@ export interface ServicePlanInput {
 export interface SubscriptionInput {
   plan_id?: string | null
   company_id?: string | null
+  /** Detachable on `PATCH` exactly as in {@link IncomeTransactionInput}: absent keeps, `null` clears. */
+  client_id?: string | null
   status?: SubscriptionStatus
   started_on?: string
   renews_on?: string | null

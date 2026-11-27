@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import {
+  ArrowRightLeft,
   CircleDot,
   Eye,
   Move,
@@ -9,6 +10,7 @@ import {
   Pencil,
   Plus,
   RotateCcw,
+  ShieldCheck,
   Trash2,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -26,6 +28,9 @@ const VERB_ICON: Record<string, ReactNode> = {
   deleted: <Trash2 className="size-3" />,
   commented: <MessageSquare className="size-3" />,
   moved: <Move className="size-3" />,
+  // Phase 2 · a funnel hop is not an edit, and a win is not a funnel hop
+  transitioned: <ArrowRightLeft className="size-3" />,
+  promoted: <ShieldCheck className="size-3" />,
 }
 
 const LINK_CLASS =
