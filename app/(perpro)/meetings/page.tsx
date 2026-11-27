@@ -6,6 +6,21 @@ import { Button, EmptyState, ErrorBanner, Field, Modal, PageHeader, ProgressRing
 import { Meeting, Task } from '@/lib/types';
 import { useTable } from '@/lib/useTable';
 import { runAI } from '@/lib/ai-client';
+import {
+  DAY_CHIPS,
+  DURATION_PRESETS,
+  dayHeading,
+  dayOffsetFromToday,
+  defaultSlot,
+  durationMinutes,
+  editEnd,
+  editStart,
+  isEndBeforeStart,
+  pickDuration,
+  shiftDay,
+  slotSummary,
+  type SlotState,
+} from '@/lib/meeting-times';
 import { format, isFuture, parseISO } from 'date-fns';
 
 type Filter = 'upcoming' | 'past';
@@ -24,6 +39,12 @@ const EMPTY_FORM = {
   agenda: '',
   notes: '',
 };
+
+/** A slot helper chip: hairline, mono, white ink when it is the current choice. */
+const chipClass = (active: boolean) =>
+  `os-tap-none os-mono min-h-[32px] rounded-os border px-2 text-[11px] transition-colors duration-150 ${
+    active ? 'border-foreground text-foreground' : 'border-line text-muted-foreground hover:border-line-strong hover:text-foreground'
+  }`;
 
 /** One meeting = one hairline row, mono date on the right. */
 function MeetingRow({ m, past, onOpen }: { m: Meeting; past: boolean; onOpen: (m: Meeting) => void }) {
@@ -62,12 +83,21 @@ export default function MeetingsPage() {
   const [tab, setTab] = useState<Filter>('upcoming');
   const [modal, setModal] = useState<'closed' | 'new' | Meeting>('closed');
   const [form, setForm] = useState(EMPTY_FORM);
+  const [follow, setFollow] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiResult, setAiResult] = useState<string | null>(null);
   const [newLinkedTitle, setNewLinkedTitle] = useState('');
   const [orderError, setOrderError] = useState<string | null>(null);
+  // Every time on this screen is rendered in the browser's own zone, so say
+  // which one that is. Read after mount to keep server and client HTML equal.
+  const [localZone, setLocalZone] = useState<string | null>(null);
+  useEffect(() => setLocalZone(Intl.DateTimeFormat().resolvedOptions().timeZone), []);
+  // Delete is irreversible, so the button has to be pressed twice. Re-opening
+  // any meeting disarms it.
+  const [armedDelete, setArmedDelete] = useState(false);
+  useEffect(() => setArmedDelete(false), [modal]);
 
   const modalId = modal !== 'closed' && modal !== 'new' ? modal.id : null;
   const linkedTasks = useMemo(
@@ -88,13 +118,17 @@ export default function MeetingsPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('new') === '1') {
-      setForm({ ...EMPTY_FORM, title: params.get('title') ?? '' });
+      const slot = defaultSlot(new Date());
+      setForm({ ...EMPTY_FORM, title: params.get('title') ?? '', ...slot });
+      setFollow(true);
       setModal('new');
     }
   }, []);
 
   function openNew() {
-    setForm(EMPTY_FORM);
+    // A new meeting is today, on the next sensible slot, one hour long.
+    setForm({ ...EMPTY_FORM, ...defaultSlot(new Date()) });
+    setFollow(true);
     setFormError(null);
     setAiResult(null);
     setOrderError(null);
@@ -111,15 +145,26 @@ export default function MeetingsPage() {
       agenda: m.agenda ?? '',
       notes: m.notes ?? '',
     });
+    setFollow(true);
     setFormError(null);
     setAiResult(null);
     setOrderError(null);
     setModal(m);
   }
 
+  /** The two datetime inputs plus whether the end still follows the start. */
+  function slotState(): SlotState {
+    return { starts_at: form.starts_at, ends_at: form.ends_at, follow };
+  }
+
+  function applySlot(next: SlotState) {
+    setForm((f) => ({ ...f, starts_at: next.starts_at, ends_at: next.ends_at }));
+    setFollow(next.follow);
+  }
+
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.title.trim() || !form.starts_at) return;
+    if (!form.title.trim() || !form.starts_at || isEndBeforeStart(form.starts_at, form.ends_at)) return;
     setSaving(true);
     setFormError(null);
     const values = {
@@ -220,9 +265,34 @@ export default function MeetingsPage() {
     setAiBusy(false);
   }
 
-  const upcoming = meetings.rows.filter((m) => isFuture(parseISO(m.starts_at)));
-  const past = meetings.rows.filter((m) => !isFuture(parseISO(m.starts_at))).reverse();
+  // The store can only sort one way, but a calendar needs soonest-first in
+  // Upcoming and most-recent-first in Past.
+  const now = new Date();
+  const byStart = (a: Meeting, b: Meeting) => parseISO(a.starts_at).getTime() - parseISO(b.starts_at).getTime();
+  const upcoming = meetings.rows.filter((m) => isFuture(parseISO(m.starts_at))).sort(byStart);
+  const past = meetings.rows.filter((m) => !isFuture(parseISO(m.starts_at))).sort(byStart).reverse();
   const visible = tab === 'upcoming' ? upcoming : past;
+
+  // `visible` is already ordered, so adjacent rows sharing a heading group in one pass.
+  const groups: { label: string; rows: Meeting[] }[] = [];
+  for (const m of visible) {
+    const label = dayHeading(parseISO(m.starts_at), now);
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) last.rows.push(m);
+    else groups.push({ label, rows: [m] });
+  }
+
+  // Slot helpers are only useful while the meeting form is open.
+  const pickedDuration = durationMinutes(form.starts_at, form.ends_at);
+  const startDay = dayOffsetFromToday(form.starts_at, now);
+  const rangeError = isEndBeforeStart(form.starts_at, form.ends_at);
+  const saveReason = !form.title.trim()
+    ? 'Title required'
+    : !form.starts_at
+      ? 'Start time required'
+      : rangeError
+        ? 'Ends must be after it starts'
+        : null;
 
   return (
     <div className="os-enter mx-auto max-w-3xl">
@@ -230,7 +300,7 @@ export default function MeetingsPage() {
         eyebrow="Calendar"
         title="Meetings"
         sub="Agenda in, action items out."
-        data={[`${upcoming.length} upcoming`, `${past.length} past`]}
+        data={[`${upcoming.length} upcoming`, `${past.length} past`, localZone && `times in ${localZone}`]}
         action={<Button onClick={openNew}>+ New meeting</Button>}
       />
 
@@ -268,8 +338,16 @@ export default function MeetingsPage() {
         <EmptyState title={tab === 'upcoming' ? 'Nothing scheduled' : 'No past meetings'} />
       ) : (
         <div>
-          {visible.map((m) => (
-            <MeetingRow key={m.id} m={m} past={tab === 'past'} onOpen={openEdit} />
+          {groups.map((g) => (
+            <div key={`${g.label}-${g.rows[0].id}`}>
+              <div className="flex items-baseline justify-between gap-3 border-b border-line-faint pb-1 pt-5 first:pt-0">
+                <span className="os-label">{g.label}</span>
+                <span className="os-mono text-[11px] text-faint">{g.rows.length}</span>
+              </div>
+              {g.rows.map((m) => (
+                <MeetingRow key={m.id} m={m} past={tab === 'past'} onOpen={openEdit} />
+              ))}
+            </div>
           ))}
         </div>
       )}
@@ -282,11 +360,61 @@ export default function MeetingsPage() {
             </Field>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Starts">
-                <input type="datetime-local" required value={form.starts_at} onChange={(e) => setForm({ ...form, starts_at: e.target.value })} className="w-full" />
+                <input
+                  type="datetime-local"
+                  required
+                  value={form.starts_at}
+                  onChange={(e) => applySlot(editStart(slotState(), e.target.value))}
+                  className="w-full"
+                />
               </Field>
               <Field label="Ends">
-                <input type="datetime-local" value={form.ends_at} onChange={(e) => setForm({ ...form, ends_at: e.target.value })} className="w-full" />
+                <input
+                  type="datetime-local"
+                  value={form.ends_at}
+                  aria-invalid={rangeError || undefined}
+                  onChange={(e) => applySlot(editEnd(slotState(), e.target.value))}
+                  className="w-full"
+                />
               </Field>
+            </div>
+
+            {rangeError && <p className="os-mono text-[11px] text-danger">Ends before it starts — the end time is not saved.</p>}
+
+            {/* Select, don't type: duration and day helpers, then the resulting slot in mono. */}
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="os-label mr-1">Duration</span>
+                {DURATION_PRESETS.map((preset) => (
+                  <button
+                    key={preset.minutes}
+                    type="button"
+                    onClick={() => applySlot(pickDuration(slotState(), preset.minutes))}
+                    aria-pressed={pickedDuration === preset.minutes}
+                    className={chipClass(pickedDuration === preset.minutes)}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="os-label mr-1">Day</span>
+                {DAY_CHIPS.map((chip) => (
+                  <button
+                    key={chip.days}
+                    type="button"
+                    onClick={() => applySlot(shiftDay(slotState(), chip.days, now))}
+                    aria-pressed={startDay === chip.days}
+                    className={chipClass(startDay === chip.days)}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+              <p className="os-micro">
+                {slotSummary(form.starts_at, form.ends_at)}
+                {!follow && form.ends_at ? ' · end fixed' : ''}
+              </p>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Attendees">
@@ -376,17 +504,34 @@ export default function MeetingsPage() {
 
             {formError && <ErrorBanner message={formError} />}
 
-            <div className="flex justify-between gap-2">
+            <div className="flex items-center justify-between gap-3">
               {modal !== 'new' ? (
-                <Button variant="danger" onClick={deleteMeeting} disabled={saving}>
-                  Delete
-                </Button>
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="danger"
+                    onClick={() => {
+                      if (armedDelete) deleteMeeting();
+                      else setArmedDelete(true);
+                    }}
+                    disabled={saving}
+                  >
+                    {armedDelete ? 'Confirm delete' : 'Delete'}
+                  </Button>
+                  {armedDelete && (
+                    <span className="os-mono text-[11px] text-danger">
+                      permanent — linked tasks are not deleted
+                    </span>
+                  )}
+                </div>
               ) : (
                 <span />
               )}
-              <Button type="submit" disabled={saving || !form.title.trim() || !form.starts_at}>
-                {saving ? 'Saving…' : 'Save meeting'}
-              </Button>
+              <div className="flex items-center gap-3">
+                {saveReason && <span className="os-mono text-[11px] text-danger">{saveReason}</span>}
+                <Button type="submit" disabled={saving || !!saveReason}>
+                  {saving ? 'Saving…' : 'Save meeting'}
+                </Button>
+              </div>
             </div>
           </form>
         </Modal>
