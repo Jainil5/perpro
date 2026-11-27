@@ -335,6 +335,8 @@ export interface Meeting {
   entity_id: string | null
   /** Echoed, always null until Phase 4 owns calendar events. */
   calendar_event_id?: string | null
+  /** `user`, `demo` or `import` — present on every row, and what `/demo/reset` keys on. */
+  source?: string
   created_at: string
   updated_at: string
 }

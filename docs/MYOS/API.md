@@ -376,25 +376,22 @@ derived `mrr` is the same maths `GET /finance/summary` uses over that client's i
 subscriptions; a detail page prints both and the difference between them is information, not noise.
 Neither is ever summed across currencies — see the currency rule above.
 
-*Status while Phase 2 lands*: the surface above is implemented in the backend's own pass — the
-models, services and migration `0004` are written and `career`/`crm` are mounted in
-`app/api/v1/__init__.py` — but three things still stand between it and a working screen, and they
-are worth listing because each one changes what a browser actually sees:
+*Status while Phase 2 lands*: this surface is now mounted — `career` and `crm` are in
+`app/api/v1/__init__.py`, `alembic upgrade head` reaches `0004` on a fresh file, and every path above
+answers on a scratch database, with each payload's key set diffed against `lib/os/career.ts` and
+`lib/os/crm.ts` rather than assumed. What is not true yet, each item with the visible consequence:
 
-* `GET /meta` `counts` (`services/context.py:workspace_counts`) has no `applications`, `interviews`,
-  `leads`, `clients` or `meetings` keys, and `services/search.py` does not read the new tables even
-  though `links.py:_SEARCH_PAGES` already names their headers.
-* `demo.seed` creates no Phase 2 rows: `_DEMO_CLIENTS` is a list of *companies* the Finance backfill
-  points at, not `clients`. Gate 5 of `PHASE2_CAREER_CRM.md` §10 is therefore unmet — an empty
-  install shows empty boards.
-* A dev database that predates the phase is stamped `0002`, so the tables do not exist yet. Until it
-  is migrated, every one of these paths answers `404 not_found`, and the three screens render their
-  deliberate "this API has no CRM endpoints yet" state instead of an empty board. That is the honest
-  failure, not a missing feature.
+* **Career's write path is still failing**: `GET /job-interviews` 500s and `POST /job-applications`
+  answers 409 for every body (the create path validates the transition before the row has a status).
+  A fresh `/career` tab therefore shows a funnel of zeros and an error where it should show rows.
+* **`demo.seed` creates no Phase 2 rows**, so even a correctly migrated install has empty boards.
+* **`services/search.py` does not read the new tables**, so ⌘K cannot find a lead or an account yet,
+  although `links.py:_SEARCH_PAGES` already names both group headers.
+* **A dev database that predates the phase is stamped `0002`**, so these paths answer `404 not_found`
+  there and the three screens say so in words — "this API has no CRM endpoints yet" — instead of
+  rendering an empty board. That is the honest failure, not a missing feature.
 
-`PHASE2_CAREER_CRM.md` §10 keeps the running list. Nothing in this section is verified end to end
-until the routers are reachable, the counts and search groups are served, the seed has rows, and
-`python3 -m pytest -q` is green against `0004`.
+`PHASE2_CAREER_CRM.md` §10 keeps the running list with the exact error text for each item.
 
 ### System / settings
 * `GET /export` → `application/json` full data dump `{ "exported_at", "workspace", "tables": {…} }`

@@ -189,6 +189,12 @@ export interface CareerSummary {
   rates: { applied_to_interview: number | null; interview_to_offer: number | null }
   time_to_interview_days: number | null
   time_to_offer_days: number | null
+  /**
+   * The spread across the open funnel, computed by the server rather than by whichever page
+   * happens to be loaded. `count` is how many rows carry a band at all, so a null `min`/`max`
+   * with `count: 0` means "nobody has written a number down", not "the roles are unpaid".
+   */
+  totals?: { by_salary: { currency: string | null; min: number | null; max: number | null; count: number } }
 }
 
 /* ------------------------------------------------------------ state machine -- */

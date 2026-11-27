@@ -143,12 +143,15 @@ links the three screens read.
 
 AI is optional and off by default (`MYOS_AI_ENABLED=0`); no MyOS screen needs a model to work.
 Phase 3 — Finance — is in: money math runs on your own rows, offline first, with no paid rate
-service and no bank connection. Phase 2 — Career & CRM — is next: `/career`, `/crm` and `/customers`
-are real screens over the real API, their tables arrive with migration `0004` along with the two
-`client_id` FKs Finance deferred, and `PHASE2_CAREER_CRM.md` is the contract they were built to.
-Until that migration is applied and its routers served, the three tabs answer a 404 and say so in
-words — "this API has no CRM endpoints yet" — rather than showing an empty board, and §10 of that
-file lists exactly what still has to land. Phases 4–6
+service and no bank connection. Phase 2 — Career & CRM — is landing as you read this: `/career`,
+`/crm` and `/customers` are real screens over the real API, their tables arrive with migration
+`0004` along with the two `client_id` FKs Finance deferred, and `PHASE2_CAREER_CRM.md` is the
+contract they were built to. CRM already behaves end to end against a migrated database — the lead
+machine, the promote transaction, the account book and the meeting rules all hold. Career's two
+write paths do not answer yet, the demo seeder creates no Phase 2 rows, and a database that predates
+the phase is still stamped `0002`, where the three tabs answer a 404 and say so in words — "this API
+has no CRM endpoints yet" — rather than showing an empty board. §10 of that file keeps the list.
+Phases 4–6
 (Google/GitHub/Supabase integrations, business analytics, AI tool calling) are specified as
 additive migrations — the sidebar shows them as roadmap entries rather than fake screens until
 they exist.

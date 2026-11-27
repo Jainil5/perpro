@@ -249,35 +249,43 @@ blank board), and the data itself.
 
 ### Still open at the time of writing
 
-Checked against the tree rather than assumed, because each item changes what a screen does:
+Checked against the tree, and against a live `0004` API on a scratch database, rather than assumed:
 
-* **Mounted**: `app/api/v1/career.py` and `app/api/v1/crm.py` are included in `api_router`, and the
-  services (`career.py`, `crm.py`, `clients.py`, `meetings.py`), models, schemas and migration
-  `0004` are written. `links.py` maps all five record types, so a notification, an activity row and
-  a ⌘K hit already land on the right screen.
-* **`GET /meta` `counts` is not extended** (`services/context.py:workspace_counts` has no
-  `applications`, `interviews`, `leads`, `clients` or `meetings`), so the stats a screen prints from
-  `counts` are absent, and `services/search.py` does not reach the new tables even though
-  `_SEARCH_PAGES` already names their headers. The screens do not depend on either — they read the
-  lists and `GET /career/summary` / `GET /crm/summary` — but ⌘K cannot find a lead yet.
-* **`demo.seed` creates no Phase 2 rows.** `_DEMO_CLIENTS` is a list of *companies* the Finance
-  backfill points at, not `clients`. Gate 5 is therefore unmet: a fresh install shows empty boards,
-  and the seed has to become idempotent-per-half the way Phase 3's was, so a database seeded before
-  Phase 2 gets its pipeline backfilled without a reset.
-* **The dev database in this sandbox is stamped `0002`** (it holds the Phase 3 tables because
-  `create_all` made them, not `0003`). Applying `0004` to it is a change to shared live data and
-  needs the operator's go-ahead — `stamp 0003`, then `upgrade head`. Smoke-testing happens against a
-  scratch database on a second port (`MYOS_API_URL=http://127.0.0.1:8001`) until then. Note that
-  `auto_create` is on by default, so *restarting* uvicorn would itself create the tables on whatever
-  file it points at.
-* **`tests/test_cli.py` still pins `HEAD = "0003"`**, which is five failures whose only cause is the
-  constant: `assert '0004' == '0003'` at :133, :174, :184 and the two `init-db`/`migrate` cases. The
-  gate is 607 green, not 602 plus five assertions that no longer describe the chain.
-* **Notification kinds.** `client_contract_end` is emitted by the write path that owns the rule
-  (`clients.py`); `interview_upcoming`, `application_stale` and `lead_follow_up` land with the
-  `notifications.refresh` sweep. The UI already renders any kind the API returns, because kinds come
-  from `/meta` and hrefs come from the payload.
-* **The Phase 3 → client seam** (§8) is now expressible — `lib/os/finance.ts` carries
+* **Mounted and reachable.** `alembic upgrade head` on a fresh file runs `0001 → 0002 → 0003 → 0004`
+  and leaves 35 tables; `career` and `crm` are in `api_router`, so `GET /job-applications`,
+  `/career/summary`, `/leads`, `/crm/summary`, `/clients` and `/meetings` all answer 200, `links.py`
+  maps the five record types, and `GET /meta` serves the eleven enum keys, the two new verbs and the
+  five new counts. Every payload key set matches `lib/os/career.ts` and `lib/os/crm.ts` — verified by
+  diffing responses against the interfaces, not by reading the schemas.
+* **Career is blocked by two write-path bugs**, which is why the tab is not yet usable end to end:
+  `GET /job-interviews` 500s (`AttributeError: 'ScalarResult' object has no attribute 'offset'` — the
+  statement is paged after it has been executed), and `POST /job-applications` answers 409 for every
+  body, because the create path runs the transition guard while the new row's status is still `None`
+  — `"a job application in status 'None' cannot move to 'saved'"`. That second one is the same shape
+  of mistake `tests/test_links.py` sweeps hrefs for: the literal string `None` in a client-visible
+  message. Until both are fixed `/career/summary` reports a funnel of eight zeros.
+* **CRM behaves as specified.** `POST /leads` → 201, `new → qualified` accepted, `won → new` refused
+  with the legal set, a promote creates the account and the second promote is a 409, `PATCH /clients`
+  moves stage and health, and `GET /clients/{id}` embeds `subscriptions`, `income` and `meetings`.
+  The meeting rules the UI is built around hold on the wire, including `entity_id` without
+  `entity_type` → 422 naming `query.entity_type`.
+* **`demo.seed` creates no Phase 2 rows** — the seed on a fresh `0004` database lists nothing for
+  leads, clients, applications, interviews or meetings, so gate 5 is unmet and a fresh install shows
+  empty boards. It has to become idempotent-per-half the way Phase 3's was.
+* **⌘K cannot find the new records yet**: `services/search.py` does not read the tables, even though
+  `_SEARCH_PAGES` already names both group headers.
+* **Three of the four notification kinds are not emitted yet** (`interview_upcoming`,
+  `application_stale`, `lead_follow_up`); `client_contract_end` comes from the write path that owns
+  the rule.
+* **The dev database in this sandbox is stamped `0002`**, so the browser is still pointed at a surface
+  without these tables; moving it is shared-state change and needs the operator's go-ahead
+  (`stamp 0003`, then `upgrade head`). Note that `auto_create` defaults to on, so restarting uvicorn
+  against that file would itself create the missing tables rather than migrate them — the two paths
+  are not the same thing, and only the migration records the schema in `alembic_version`.
+* **`tests/test_cli.py` pins `HEAD = "0003"`** while `0004` exists: five failures whose only cause is
+  the constant (`assert '0004' == '0003'`), not the chain.
+* **The Phase 3 → client seam (§8)** is now expressible — `lib/os/finance.ts` carries
   `client_id?: string | null` on `Subscription`, `IncomeTransaction` and both input types, and the
-  backend already echoes it — but the ledger and subscriptions screens have to render the picker and
-  honour `?client_id=` before the account pages can claim a money trail.
+  backend echoes it on both lists with no nested `client` — but the ledger and subscriptions screens
+  still have to render the picker and honour `?client_id=` before the account pages can claim a
+  money trail.
