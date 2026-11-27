@@ -9,6 +9,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from tests.helpers import clock_iso
+
 V1 = "/api/v1"
 TODAY = "2026-11-21"
 MISSING = "00000000-0000-4000-8000-000000000000"
@@ -323,7 +325,9 @@ def test_activity_records_the_writes(client: TestClient) -> None:
     client.patch(f"{V1}/tasks/{task['id']}", json={"status": "in_progress"})
     client.post(f"{V1}/tasks/{task['id']}/complete", params={"today": TODAY})
 
-    body = client.get(f"{V1}/activity", params={"today": TODAY}).json()
+    # the default 7-day window is counted from the server's own day, and these three
+    # rows were written on it, so no ?today= is needed (or wanted) here
+    body = client.get(f"{V1}/activity").json()
     assert set(body) == {"items", "total"}
     assert body["total"] == 3
     rows = {row["verb"]: row for row in body["items"]}
@@ -364,14 +368,18 @@ def test_activity_records_the_writes(client: TestClient) -> None:
 
 def test_activity_window_is_measured_from_the_injected_today(client: TestClient) -> None:
     create(client, "/tasks", {"title": "Old"})
-    # ``days`` is a floor counted back from ``today``, so a far-future day excludes 2026 rows
-    assert client.get(f"{V1}/activity", params={"days": 10, "today": "2030-01-01"}).json() == {
+    # ``days`` is a floor counted back from ``today``, so a day far past the row's own
+    # timestamp excludes it - measured from the clock, because that is what wrote the row
+    ahead = clock_iso(400)
+    assert client.get(f"{V1}/activity", params={"days": 10, "today": ahead}).json() == {
         "items": [],
         "total": 0,
     }
     # days=0 disables the window (the full-history view)
-    assert client.get(f"{V1}/activity", params={"days": 0, "today": "2030-01-01"}).json()["total"] == 1
-    assert client.get(f"{V1}/activity", params={"days": 1, "today": TODAY}).json()["total"] == 1
+    assert client.get(f"{V1}/activity", params={"days": 0, "today": ahead}).json()["total"] == 1
+    # measured from the day the row was written, a one-day window still holds it
+    within = client.get(f"{V1}/activity", params={"days": 1, "today": clock_iso()}).json()
+    assert within["total"] == 1
     assert client.get(f"{V1}/activity", params={"days": -1}).status_code == 422
     assert client.get(f"{V1}/activity", params={"days": 99999}).status_code == 422
 
@@ -408,10 +416,13 @@ def test_demo_seed_is_idempotent_over_http(client: TestClient) -> None:
     assert first["created"]["projects"] == 8 and first["created"]["tasks"] == 49
     second = seed(client)
     assert second == {"created": {}, "skipped": True}
-    assert client.get(f"{V1}/tasks").json()["total"] == 49
-    # the demo data satisfies the documented OrderBook example
+    assert client.get(f"{V1}/tasks", params={"today": TODAY}).json()["total"] == 49
+    # the demo data satisfies the documented OrderBook example - read at the day it was
+    # seeded for, since "overdue" is a comparison and not a stored column
     orderbook = [
-        row for row in client.get(f"{V1}/projects").json()["items"] if row["name"] == "OrderBook CRM"
+        row
+        for row in client.get(f"{V1}/projects", params={"today": TODAY}).json()["items"]
+        if row["name"] == "OrderBook CRM"
     ][0]
     assert orderbook["progress"] == 62
     assert orderbook["task_counts"] == {"total": 13, "done": 8, "open": 5, "overdue": 1}

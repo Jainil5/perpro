@@ -7,9 +7,11 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.models import Contact
 from app.services import dashboard
 from tests.helpers import (
     backdate_completion,
+    backdate_created,
     set_snooze,
     backdate_task,
     make_contact,
@@ -72,7 +74,9 @@ def test_task_blocks_split_on_the_injected_today(session: Session, workspace_id:
     next_week = make_task(session, workspace_id, "Next week", due_date=DAY + dt.timedelta(days=5))
     far_away = make_task(session, workspace_id, "Far", due_date=DAY + dt.timedelta(days=40))
     undated = make_task(session, workspace_id, "No date")
-    make_task(session, workspace_id, "Recently done", status="done")
+    done = make_task(session, workspace_id, "Recently done", status="done")
+    # completed_this_week counts a stored stamp, so pin the stamp to the injected day
+    backdate_completion(session, done["id"], dt.datetime.combine(DAY, dt.time(9, 0)))
 
     payload = dashboard.dashboard_payload(session, workspace_id, today=DAY)
     titles = {key: [task["title"] for task in payload["tasks"][key]] for key in ("due_today", "overdue", "upcoming")}
@@ -152,7 +156,9 @@ def test_reminders_due_block_uses_the_snooze_override(session: Session, workspac
 
 
 def test_people_and_notifications_blocks(session: Session, workspace_id: str) -> None:
-    make_contact(session, workspace_id, "New this month")
+    contact = make_contact(session, workspace_id, "New this month")
+    # new_contacts_30d counts the stored created_at, so put it inside the injected month
+    backdate_created(session, Contact, contact["id"], dt.datetime.combine(DAY, dt.time(9, 0)))
     make_task(session, workspace_id, "Late", due_date=DAY - dt.timedelta(days=1))
     from app.services import notifications
 
@@ -196,7 +202,10 @@ def test_overdue_insights_on_an_empty_list(session: Session, workspace_id: str) 
 def test_stalled_past_target_empty_and_unlinked_rules(session: Session, workspace_id: str) -> None:
     stalled = make_project(session, workspace_id, "Stalled", status="in_progress")
     quiet = make_task(session, workspace_id, "Quiet task", project_id=stalled["id"])
-    backdate_task(session, quiet["id"], dt.datetime(2026, 10, 20, 9, 0))
+    # both stamps are pinned: the stalled rule measures quiet days against the injected
+    # day, and an unstamped row would carry the clock the suite happens to run on
+    quiet_stamp = dt.datetime.combine(DAY - dt.timedelta(days=32), dt.time(9, 0))
+    backdate_task(session, quiet["id"], quiet_stamp)
 
     late = make_project(
         session,
@@ -206,6 +215,7 @@ def test_stalled_past_target_empty_and_unlinked_rules(session: Session, workspac
         target_date=DAY - dt.timedelta(days=4),
     )
     fresh = make_task(session, workspace_id, "Open task", project_id=late["id"])
+    backdate_task(session, fresh["id"], dt.datetime.combine(DAY, dt.time(9, 0)))
     assert fresh["id"] != quiet["id"]
 
     make_project(session, workspace_id, "Empty nest", status="planning")

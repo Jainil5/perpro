@@ -5,6 +5,12 @@ before anything reads the settings, then the cached settings and engines are dro
 the app, the services and Alembic all rebuild around it. Nothing writes to
 ``backend/data``, and the ``no_network`` guard makes an outbound connection fail the test
 that attempts it - the suite is offline by construction, not by convention.
+
+Dates follow one rule, because a derived value is only as reproducible as the day it was
+measured on: either inject that day (``?today=``, ``today=DAY``) into *every* call the
+assertion reads - including the read that returns the derived field - or build the fixture
+from the day the server will use anyway (``helpers.clock_day``).  A test that mixes the two
+passes only until the calendar moves.
 """
 
 from __future__ import annotations
@@ -23,7 +29,10 @@ from app.core.config import reload_settings
 from app.core.db import dispose_engines, init_db, session_scope
 from app.services import context
 
-#: the reference date the tests pin everything to (a Saturday)
+#: the reference date the tests pin everything to (a Saturday).  Every date derived from
+#: it has to be *read* with ``today=`` too - and a route that takes no override at all
+#: (``POST /tasks``, ``GET /tasks/{id}``, ``GET /projects/{id}``, ``POST /milestones``,
+#: ``meta``) has to be fed from the clock instead: see ``helpers.clock_day``.
 TODAY = dt.date(2026, 11, 21)
 
 

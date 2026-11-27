@@ -10,6 +10,8 @@ import datetime as dt
 
 from fastapi.testclient import TestClient
 
+from tests.helpers import clock_iso
+
 V1 = "/api/v1"
 TODAY = "2026-11-21"
 
@@ -67,14 +69,17 @@ def test_list_tasks_returns_the_documented_envelope(client: TestClient) -> None:
 
 
 def test_create_task_returns_every_documented_field(client: TestClient) -> None:
-    task = post_task(client, title="Write migration notes", due_date="2026-11-23", tags=["schema"])
+    # POST /tasks takes no ?today=, so its two derived flags are measured from the
+    # server's own day: put the due date two days after that day, never on a literal.
+    due = clock_iso(2)
+    task = post_task(client, title="Write migration notes", due_date=due, tags=["schema"])
     assert set(task) == TASK_KEYS
     assert task["title"] == "Write migration notes"
     assert task["status"] == "todo" and task["priority"] == "medium"
     assert task["recurrence"] == "none" and task["tags"] == ["schema"]
-    assert task["due_date"] == "2026-11-23" and task["completed_at"] is None
+    assert task["due_date"] == due and task["completed_at"] is None
     assert task["project"] is None and task["parent_task_id"] is None
-    assert task["created_at"].endswith("Z") and task["due_date"] == "2026-11-23"
+    assert task["created_at"].endswith("Z")
     assert task["is_overdue"] is False and task["is_due_today"] is False
 
 
@@ -143,13 +148,21 @@ def test_tag_filter_accepts_a_leading_hash(client: TestClient) -> None:
 
 
 def test_derived_flags_follow_today(client: TestClient) -> None:
-    task = post_task(client, title="Due", due_date="2026-11-21")
-    overdue = post_task(client, title="Past", due_date="2026-11-01")
-    fetched = client.get(f"{V1}/tasks/{task['id']}", params={"today": TODAY}).json()
+    # GET /tasks/{id} has no ?today= override, so its flags are the server's own day
+    task = post_task(client, title="Due", due_date=clock_iso())
+    overdue = post_task(client, title="Past", due_date=clock_iso(-20))
+    fetched = client.get(f"{V1}/tasks/{task['id']}").json()
     assert fetched["is_due_today"] is True and fetched["is_overdue"] is False
-    # the same row is overdue one day later
-    later = client.get(f"{V1}/tasks/{overdue['id']}", params={"today": "2026-11-22"}).json()
-    assert later["is_overdue"] is True and later["is_due_today"] is False
+    assert client.get(f"{V1}/tasks/{overdue['id']}").json()["is_overdue"] is True
+
+    # the list takes a reference date, and the very same rows move with it
+    def flags(**params) -> dict[str, tuple[bool, bool]]:
+        rows = client.get(f"{V1}/tasks", params=params).json()["items"]
+        return {row["title"]: (row["is_overdue"], row["is_due_today"]) for row in rows}
+
+    assert flags(today=clock_iso()) == {"Due": (False, True), "Past": (True, False)}
+    # one day later "Due" is overdue and nothing is due today any more
+    assert flags(today=clock_iso(1)) == {"Due": (True, False), "Past": (True, False)}
 
 
 # -------------------------------------------------------------------- validation

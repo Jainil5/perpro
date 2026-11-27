@@ -12,7 +12,7 @@ from typing import Any
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
-from app.core.utils import new_id, now_utc
+from app.core.utils import new_id, now_utc, today_utc
 from app.models import Milestone, Project, Reminder, Task, Workspace
 from app.services import goals as goals_service
 from app.services import milestones as milestones_service
@@ -21,6 +21,23 @@ from app.services import people as people_service
 from app.services import projects as projects_service
 from app.services import reminders as reminders_service
 from app.services import tasks as tasks_service
+
+
+def clock_day(offset_days: int = 0) -> dt.date:
+    """A date measured from the app's own clock rather than from a literal.
+
+    The routes without a ``?today=`` override - ``POST /tasks``, ``GET /tasks/{id}``,
+    ``POST /milestones``, ``GET /projects/{id}`` and the CLI - derive ``is_overdue``,
+    ``next_due`` and ``days_away`` from ``today_utc()``.  A fixture dated against a
+    hard-coded "reference today" only works until the calendar moves, so those tests
+    place their rows relative to the day the server will actually use.
+    """
+    return today_utc() + dt.timedelta(days=offset_days)
+
+
+def clock_iso(offset_days: int = 0) -> str:
+    """``clock_day`` in the format the API speaks."""
+    return clock_day(offset_days).isoformat()
 
 
 def other_workspace(session: Session, slug: str = "elsewhere") -> str:
@@ -84,6 +101,19 @@ def backdate_completion(session: Session, task_id: str, when: dt.datetime) -> No
     """Move ``completed_at`` (and the touch stamp) into the past."""
     session.execute(
         sa.update(Task).where(Task.id == task_id).values(completed_at=when, updated_at=when)
+    )
+    session.flush()
+
+
+def backdate_created(session: Session, model, row_id: str, when: dt.datetime) -> None:
+    """Move ``created_at`` (and the touch stamp) to a chosen moment.
+
+    Window rules such as ``people.new_contacts_in_window`` count rows by their stamp,
+    which the services take from the real clock - pin the stamp and the rule becomes a
+    date the test chose instead of the day the suite happens to run on.
+    """
+    session.execute(
+        sa.update(model).where(model.id == row_id).values(created_at=when, updated_at=when)
     )
     session.flush()
 

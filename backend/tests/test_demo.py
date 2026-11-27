@@ -21,7 +21,7 @@ from app.models import (
     Task,
 )
 from app.services import demo, goals as goals_service, projects as projects_service
-from tests.helpers import make_project, make_task
+from tests.helpers import backdate_task, make_project, make_task
 
 DAY = dt.date(2026, 11, 21)
 
@@ -161,6 +161,9 @@ def test_reset_removes_demo_rows_then_reseeds(session: Session, workspace_id: st
     seeded = demo.seed(session, workspace_id, today=DAY)
     user_project = make_project(session, workspace_id, "My real work")
     user_task = make_task(session, workspace_id, "My real task", project_id=user_project["id"])
+    # the reset re-derives notifications, and the stalled rule reads task.updated_at -
+    # pin the user row to the seeded day so its stamp cannot look stale or future
+    backdate_task(session, user_task["id"], dt.datetime.combine(DAY, dt.time(9, 0)))
     session.flush()
 
     result = demo.reset(session, workspace_id, today=DAY)

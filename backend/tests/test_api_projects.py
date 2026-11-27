@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
+from tests.helpers import clock_iso
+
 V1 = "/api/v1"
 TODAY = "2026-11-21"
 
@@ -126,12 +128,15 @@ def test_completed_and_archived_projects_are_always_full(client: TestClient) -> 
 
 
 def test_next_due_is_the_nearest_open_task(client: TestClient) -> None:
+    # GET /projects/{id} takes no ?today=, so next_due is measured from the server's own
+    # day: two open tasks ahead of it, the nearer one first, and a completed one later.
+    today = clock_iso()
     project = make_project(client, "Scheduled")
-    make_task(client, title="Far", project_id=project["id"], due_date="2026-12-30")
-    near = make_task(client, title="Near", project_id=project["id"], due_date="2026-11-23")
+    make_task(client, title="Far", project_id=project["id"], due_date=clock_iso(39))
+    near = make_task(client, title="Near", project_id=project["id"], due_date=clock_iso(2))
     fetched = client.get(f"{V1}/projects/{project['id']}").json()
-    assert fetched["next_due"] == {"title": "Near", "due_date": "2026-11-23"}
-    client.post(f"{V1}/tasks/{near['id']}/complete", params={"today": TODAY})
+    assert fetched["next_due"] == {"title": "Near", "due_date": clock_iso(2)}
+    client.post(f"{V1}/tasks/{near['id']}/complete", params={"today": today})
     assert client.get(f"{V1}/projects/{project['id']}").json()["next_due"]["title"] == "Far"
 
 
@@ -264,14 +269,15 @@ def test_project_validation(client: TestClient) -> None:
 
 
 def test_milestone_shape_and_days_away(client: TestClient) -> None:
+    # POST /milestones takes no ?today=, so days_away is the gap to the server's own day
     project = make_project(client, "Milestone home")
-    milestone = make_milestone(client, project["id"], "Beta to first client", date="2026-12-01")
+    milestone = make_milestone(client, project["id"], "Beta to first client", date=clock_iso(10))
     assert set(milestone) == MILESTONE_KEYS
     assert milestone["status"] == "open" and milestone["completed_at"] is None
     assert milestone["project_id"] == project["id"]
-    # days_away is relative to ?today=: 2026-11-21 -> 2026-12-01
     assert milestone["days_away"] == 10
-    listed = client.get(f"{V1}/milestones", params={"today": "2026-11-25"}).json()["items"]
+    # the list does take ?today=: four days on, the same milestone is six days away
+    listed = client.get(f"{V1}/milestones", params={"today": clock_iso(4)}).json()["items"]
     assert [row["days_away"] for row in listed] == [6]
 
 

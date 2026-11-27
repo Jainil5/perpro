@@ -25,7 +25,7 @@ from app.core.db import dispose_engines, get_engine, session_scope
 from app.main import create_app
 from app.models import Notification, Project, Task, Workspace, WorkspaceMember
 from app.services import context
-from tests.helpers import make_project, make_task
+from tests.helpers import clock_day, make_project, make_task
 
 #: ``alembic upgrade head`` leaves exactly this revision behind
 HEAD = "0002"
@@ -341,7 +341,8 @@ def test_cli_export_matches_get_export(run, tmp_path: Path) -> None:
 def test_meta_prints_counts_then_enums(run) -> None:
     with session_scope() as session:
         scope = context.resolve_workspace(session).id
-        make_task(session, scope, "Counted", due_date=dt.date(2026, 10, 1))
+        # ``meta`` has no --today flag, so the counts are measured from the real clock
+        make_task(session, scope, "Counted", due_date=clock_day(-1))
         session.commit()
 
     code, out, _ = run(["meta"])
