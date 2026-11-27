@@ -75,6 +75,18 @@ def test_meta_is_the_single_source_of_enumerations(client: TestClient) -> None:
     assert body["enums"]["project.status"][0] == "backlog"
     assert "notification.kind" in body["enums"] and "activity.verb" in body["enums"]
     assert "note.category" in body["enums"]
+    # Phase 3 (PHASE3_FINANCE.md §5): the finance enums come from the same table
+    assert body["enums"]["expense.recurrence"] == ["none", "weekly", "monthly", "quarterly", "yearly"]
+    assert body["enums"]["scenario.item.recurrence"] == [
+        "none",
+        "weekly",
+        "monthly",
+        "quarterly",
+        "yearly",
+        "one_time",
+    ]
+    assert body["enums"]["tax.regime"] == ["none", "flat", "slab", "presumptive"]
+    assert len(body["enums"]["currency.code"]) == 46
     assert body["counts"]["tasks"] == 0
 
     create(client, "/tasks", {"title": "Counted"})
@@ -96,6 +108,12 @@ def test_meta_is_the_single_source_of_enumerations(client: TestClient) -> None:
         "reminders",
         "notifications",
         "activity",
+        # Phase 3 (§4 "system surfaces"): one key per finance table the screens list
+        "expenses",
+        "income",
+        "subscriptions",
+        "services",
+        "scenarios",
     }
     assert counts["tasks_done"] == 0 and counts["tasks_open"] == 1
 
@@ -483,7 +501,7 @@ def test_every_documented_route_exists(client: TestClient) -> None:
     """The OpenAPI surface is exactly the API.md contract - nothing else."""
     paths = client.get("/openapi.json").json()["paths"]
     operations = {f"{method.upper()} {path}" for path, item in paths.items() for method in item}
-    assert len(operations) == 67
+    assert len(operations) == 132
     for expected in (
         "GET /api/v1/health",
         "GET /api/v1/dashboard",
@@ -493,11 +511,29 @@ def test_every_documented_route_exists(client: TestClient) -> None:
         "GET /api/v1/export",
         "POST /api/v1/demo/reset",
         "PATCH /api/v1/workspace",
+        # Phase 3 (PHASE3_FINANCE.md §4): the finance surface, verbs exactly as written
+        "GET /api/v1/finance/summary",
+        "GET /api/v1/expenses/summary",
+        "GET /api/v1/expenses/export.csv",
+        "GET /api/v1/income/export.csv",
+        "POST /api/v1/expenses/bulk",
+        "POST /api/v1/income/{income_id}/mark-paid",
+        "POST /api/v1/income-profiles/preview",
+        "POST /api/v1/exchange-rates/sync",
+        "GET /api/v1/convert",
+        "GET /api/v1/services/{service_id}",
+        "POST /api/v1/subscriptions/{subscription_id}/pause",
+        "GET /api/v1/cost-scenarios/compare",
+        "POST /api/v1/cost-scenarios/{scenario_id}/activate",
+        "PATCH /api/v1/cost-scenario-items/{item_id}",
     ):
         assert expected in operations, expected
     # nothing was invented beyond the contract
     assert "DELETE /api/v1/dashboard" not in operations
     assert "POST /api/v1/search" not in operations
+    # §4 lists no single-category read and no scenario-item read: they are not here either
+    assert "GET /api/v1/expense-categories/{category_id}" not in operations
+    assert "GET /api/v1/cost-scenario-items/{item_id}" not in operations
 
 
 def test_unknown_paths_use_the_same_error_envelope(client: TestClient) -> None:

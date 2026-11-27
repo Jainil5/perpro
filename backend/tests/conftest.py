@@ -11,6 +11,10 @@ measured on: either inject that day (``?today=``, ``today=DAY``) into *every* ca
 assertion reads - including the read that returns the derived field - or build the fixture
 from the day the server will use anyway (``helpers.clock_day``).  A test that mixes the two
 passes only until the calendar moves.
+
+Because that is a rule and not a proof, ``tests/frozen_clock.py`` adds ``--frozen-date`` and
+runs the whole suite against a pinned app clock (PHASE3_FINANCE.md §10.1); with the flag
+absent the suite runs on the machine's date exactly as it always did.
 """
 
 from __future__ import annotations
@@ -28,12 +32,38 @@ from sqlalchemy.orm import Session
 from app.core.config import reload_settings
 from app.core.db import dispose_engines, init_db, session_scope
 from app.services import context
+from tests import frozen_clock
 
 #: the reference date the tests pin everything to (a Saturday).  Every date derived from
 #: it has to be *read* with ``today=`` too - and a route that takes no override at all
 #: (``POST /tasks``, ``GET /tasks/{id}``, ``GET /projects/{id}``, ``POST /milestones``,
 #: ``meta``) has to be fed from the clock instead: see ``helpers.clock_day``.
 TODAY = dt.date(2026, 11, 21)
+
+
+# --------------------------------------------------------------- the frozen clock (§10.1)
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    frozen_clock.add_option(parser)
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Swap the app's clock seam before the first fixture reads it."""
+    config._myos_clock = frozen_clock.install(config)  # noqa: SLF001 - one flag, read by the header
+
+
+def pytest_report_header(config: pytest.Config) -> list[str]:
+    day = frozen_clock.frozen(config)
+    if day is None:
+        return []
+    clock = getattr(config.option, "frozen_time", "09:00:00")
+    return [f"myos frozen clock: today_utc() == {day} at {clock} UTC"]
+
+
+def pytest_runtest_setup(item: pytest.Item) -> None:
+    """Re-apply it every test: a service imported lazily would otherwise keep the real clock."""
+    frozen_clock.sweep()
 
 
 @pytest.fixture(autouse=True)

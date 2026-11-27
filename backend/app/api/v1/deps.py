@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from app.core.db import get_session
 from app.core.errors import field_error, validation
 from app.models.enums import ENUMS
-from app.services import context, serializers
+from app.services import context, money, serializers
 
 #: one unit of work per request (commit on success, rollback on error)
 DbSession = Annotated[Session, Depends(get_session)]
@@ -83,4 +83,41 @@ def sort_param(*allowed: str, default: str, field: str = "sort") -> Any:
     return value_param(allowed, field, default=default, unit="sort key")
 
 
-__all__ = ["DbSession", "WorkspaceScope", "Today", "today_param", "workspace_scope", "enum_param", "sort_param"]
+#: ``?dir=`` (API.md addendum): flip the requested sort key only, never the whole ORDER BY
+DIRS = ("asc", "desc")
+
+
+def currency_param(field: str = "currency") -> Any:
+    """Optional ``?currency=XXX`` pinned to the registry (§2.5), blanks count as absent."""
+
+    def resolve(value: str | None = Query(default=None, alias=field)) -> str | None:
+        if value is None or not value.strip():
+            return None
+        return money.require_currency(value, field, in_query=True)
+
+    depends: Callable[..., Any] = Depends(resolve)
+    return depends
+
+
+#: the three query shapes every Finance list reuses
+DirQuery = Annotated[str | None, value_param(DIRS, "dir")]
+CurrencyQuery = Annotated[str | None, currency_param()]
+MonthQuery = Annotated[
+    str | None, Query(description="YYYY-MM or YYYY-MM-01; the label is echoed as YYYY-MM")
+]
+
+
+__all__ = [
+    "DbSession",
+    "WorkspaceScope",
+    "Today",
+    "today_param",
+    "workspace_scope",
+    "enum_param",
+    "sort_param",
+    "currency_param",
+    "DIRS",
+    "DirQuery",
+    "CurrencyQuery",
+    "MonthQuery",
+]

@@ -38,7 +38,8 @@ from app.models import (
 )
 from app.services import context
 
-#: dumped in this order: tenancy, work, knowledge, people, outcomes & signals
+#: dumped in this order: tenancy, work, knowledge, people, outcomes & signals, finance
+#: (the ten Phase 3 tables in DATA_MODEL.md §13 order)
 TABLE_ORDER: tuple[str, ...] = (
     "workspaces",
     "users",
@@ -59,6 +60,16 @@ TABLE_ORDER: tuple[str, ...] = (
     "reminders",
     "notifications",
     "activity_logs",
+    "income_profiles",
+    "exchange_rates",
+    "services",
+    "service_plans",
+    "subscriptions",
+    "expense_categories",
+    "expenses",
+    "income_transactions",
+    "cost_scenarios",
+    "cost_scenario_items",
 )
 
 #: association name -> (association table, parent table, parent foreign key)

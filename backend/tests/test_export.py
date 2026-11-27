@@ -18,7 +18,7 @@ from tests.helpers import make_project, make_task
 
 DAY = dt.date(2026, 11, 21)
 
-#: every Phase 1 table, dumped in this order
+#: every table the dump covers, in this order (19 Phase 1 + the ten §13 finance tables)
 EXPECTED_TABLES = (
     "workspaces",
     "users",
@@ -39,6 +39,18 @@ EXPECTED_TABLES = (
     "reminders",
     "notifications",
     "activity_logs",
+    # Phase 3 (PHASE3_FINANCE.md §4: "GET /export includes the ten finance tables"),
+    # in DATA_MODEL.md §13 order
+    "income_profiles",
+    "exchange_rates",
+    "services",
+    "service_plans",
+    "subscriptions",
+    "expense_categories",
+    "expenses",
+    "income_transactions",
+    "cost_scenarios",
+    "cost_scenario_items",
 )
 
 
@@ -51,7 +63,7 @@ def tables(payload: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
 
 def test_the_order_is_a_documented_contract() -> None:
     assert TABLE_ORDER == EXPECTED_TABLES
-    assert len(TABLE_ORDER) == 19
+    assert len(TABLE_ORDER) == 29
 
 
 def test_payload_has_exactly_the_documented_top_level_keys(
@@ -253,7 +265,17 @@ def test_notifications_are_part_of_the_dump(session: Session, workspace_id: str)
     assert rows
     assert {"id", "workspace_id", "kind", "severity", "read_at", "created_at"} <= set(rows[0])
     assert {row["kind"] for row in rows} <= {
-        "task_overdue", "task_due", "milestone", "reminder", "project_stalled", "system"
+        "task_overdue",
+        "task_due",
+        "milestone",
+        "reminder",
+        "project_stalled",
+        "system",
+        # Phase 3 (§6): the four finance rules fire on seeded data
+        "subscription_renewing",
+        "expense_recurring_due",
+        "income_overdue",
+        "rate_stale",
     }
 
 

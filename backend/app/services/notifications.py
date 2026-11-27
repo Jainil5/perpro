@@ -4,6 +4,10 @@ API.md response rule 4: ``GET`` requests never create notifications. The rules l
 here and run only from ``POST /notifications/refresh`` (UI on dashboard load) and
 ``python -m app.cli notify``.
 
+Phase 1 covers tasks, milestones, reminders and quiet projects; Phase 3 adds the four
+Finance rules of PHASE3_FINANCE.md §6 - a renewal inside a week, a recurring bill inside
+three days, an overdue invoice and a stale currency pair - in :func:`_finance_rules`.
+
 Idempotency comes from ``dedupe_key``: every rule has a stable key, a row with that
 key is *updated* instead of duplicated, a row whose condition has cleared gets
 ``resolved_at``, and a row whose condition comes back is reopened. Resolved rows stop
@@ -20,14 +24,24 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
 from app.core.utils import now_utc, today_utc
-from app.models import Milestone, Notification, Project, Reminder, Task
-from app.models.enums import NotificationKind, ProjectStatus, Severity
-from app.services import crud, links, serializers
+from app.models import Expense, IncomeTransaction, Milestone, Notification, Project, Reminder, Task
+from app.models.enums import (
+    ExpenseRecurrence,
+    IncomeStatus,
+    NotificationKind,
+    ProjectStatus,
+    Severity,
+)
+from app.services import crud, links, money, rates, serializers, subscriptions
 from app.services.stats import OPEN_TASK_STATUSES, aggregates_for_projects
 
 #: how far ahead an upcoming milestone notifies, and the "no activity" bar for a stall
 MILESTONE_WINDOW_DAYS = 7
 STALLED_WINDOW_DAYS = 7
+
+#: the Finance windows from PHASE3_FINANCE.md §6
+SUBSCRIPTION_RENEWAL_WINDOW_DAYS = 7
+EXPENSE_DUE_WINDOW_DAYS = 3
 
 
 @dataclass(frozen=True)
@@ -57,6 +71,129 @@ def _titles(tasks: list[Task], limit: int = 3) -> str:
 
 def _plural(count: int, noun: str) -> str:
     return f"{count} {noun}{'' if count == 1 else 's'}"
+
+
+def _when(day: dt.date, today: dt.date) -> str:
+    """"today" / "tomorrow" / "in 4 days" - the phrasing the §6 rules share."""
+    days = (day - today).days
+    return "today" if days == 0 else "tomorrow" if days == 1 else f"in {days} days"
+
+
+def _finance_rules(
+    session: Session, workspace_id: str, day: dt.date
+) -> list[Rule]:
+    """The four Finance rules of PHASE3_FINANCE.md §6, in a stable order.
+
+    Each key names the *condition*, not just the row, so the same renewal or the same
+    stale pair cannot be raised twice while a refresh is replayed - and a change of
+    renewal date, month or week produces exactly one new row.
+    """
+    rules: list[Rule] = []
+
+    for row in money.live_subscriptions(session, workspace_id, today=day):
+        derived = subscriptions.subscription_payload(row, today=day)
+        renews_on = derived["renews_on"]
+        days_until = derived["renews_in_days"]
+        if (
+            renews_on is None
+            or days_until is None
+            or days_until < 0
+            or days_until > SUBSCRIPTION_RENEWAL_WINDOW_DAYS
+        ):
+            continue
+        label = money.subscription_label(row)
+        detail = f"{money.money(row.price, row.currency)} {row.currency}"
+        if row.interval:
+            detail += f" every {row.interval}"
+        if derived["monthly_cost"] is not None:
+            detail += f", about {derived['monthly_cost']} {row.currency} a month"
+        rules.append(
+            Rule(
+                dedupe_key=f"subscription:{row.id}:renews:{renews_on.isoformat()}",
+                kind=NotificationKind.SUBSCRIPTION_RENEWING.value,
+                severity=Severity.INFO.value,
+                title=f"“{label}” renews {_when(renews_on, day)}",
+                body=detail,
+                entity_type="subscription",
+                entity_id=row.id,
+                href=links.href_for("subscription", row.id),
+            )
+        )
+
+    due_rows = list(
+        session.scalars(
+            sa.select(Expense)
+            .where(
+                Expense.workspace_id == workspace_id,
+                Expense.recurring.is_(True),
+                Expense.recurrence.is_not(None),
+                Expense.recurrence != ExpenseRecurrence.NONE.value,
+            )
+            .order_by(Expense.paid_on, Expense.label, Expense.id)
+        )
+    )
+    for row in due_rows:
+        due = money.next_occurrence(row.paid_on, row.recurrence, today=day)
+        if due is None or (due - day).days > EXPENSE_DUE_WINDOW_DAYS:
+            continue
+        parts = [str(row.recurrence), row.vendor]
+        rules.append(
+            Rule(
+                #: keyed on the month, so a monthly bill reminds once per cycle
+                dedupe_key=f"expense:{row.id}:due:{money.month_label(due)}",
+                kind=NotificationKind.EXPENSE_RECURRING_DUE.value,
+                severity=Severity.INFO.value,
+                title=f"“{row.label}” is due {_when(due, day)}",
+                body=f"{money.money(row.amount, row.currency)} {row.currency} "
+                f"({', '.join(part for part in parts if part)})",
+                entity_type="expense",
+                entity_id=row.id,
+                href=links.href_for("expense", row.id),
+            )
+        )
+
+    overdue_rows = list(
+        session.scalars(
+            sa.select(IncomeTransaction)
+            .where(
+                IncomeTransaction.workspace_id == workspace_id,
+                IncomeTransaction.status == IncomeStatus.OVERDUE.value,
+            )
+            .order_by(IncomeTransaction.received_on, IncomeTransaction.label, IncomeTransaction.id)
+        )
+    )
+    for row in overdue_rows:
+        derived = money.income_row_payload(row, day)
+        rules.append(
+            Rule(
+                dedupe_key=f"income:{row.id}:overdue",
+                kind=NotificationKind.INCOME_OVERDUE.value,
+                severity=Severity.WARNING.value,
+                title=f"“{row.label}” is {derived['days_overdue']} days overdue",
+                body=f"{money.money(row.amount, row.currency)} {row.currency} invoiced on "
+                f"{row.received_on.isoformat()}",
+                entity_type="income",
+                entity_id=row.id,
+                href=links.href_for("income", row.id),
+            )
+        )
+
+    #: one reminder per pair per week: the number is the user's own last known rate, so
+    #: the row says "this is old", it does not nag daily (§2.4)
+    week = f"{day.isocalendar().year}-W{day.isocalendar().week:02d}"
+    for pair in rates.stale_pairs(session, workspace_id, today=day):
+        rules.append(
+            Rule(
+                dedupe_key=f"rate:{pair['base']}-{pair['quote']}:{week}",
+                kind=NotificationKind.RATE_STALE.value,
+                severity=Severity.INFO.value,
+                title=f"{pair['base']}→{pair['quote']} was last set {pair['age_days']} days ago",
+                body=f"Using the rate from {pair['as_of'].isoformat()}; add a newer row to stop this.",
+                entity_type="exchange_rate",
+                href=links.currency_pair_href(pair["base"], pair["quote"]),
+            )
+        )
+    return rules
 
 
 def derive_rules(
@@ -208,6 +345,8 @@ def derive_rules(
                 href=links.href_for("project", project.id),
             )
         )
+
+    rules.extend(_finance_rules(session, workspace_id, day))
     return rules
 
 

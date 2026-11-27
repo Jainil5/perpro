@@ -9,11 +9,15 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.api.v1 import (
+    catalogue,
+    finance,
+    ledger,
     milestones,
     notes,
     people,
     projects,
     results,
+    scenarios,
     signals,
     system,
     tasks,
@@ -28,5 +32,10 @@ api_router.include_router(notes.router)
 api_router.include_router(people.router)
 api_router.include_router(results.router)
 api_router.include_router(signals.router)
+# Phase 3 (PHASE3_FINANCE.md §4): the finance surface owns its paths, so no prefixes
+api_router.include_router(finance.router)
+api_router.include_router(catalogue.router)
+api_router.include_router(ledger.router)
+api_router.include_router(scenarios.router)
 
 __all__ = ["api_router"]

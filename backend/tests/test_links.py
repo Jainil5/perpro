@@ -40,6 +40,14 @@ LIST_PAGES = (
     "/activity",
     "/search",
     "/settings",
+    # Phase 3 (PHASE3_FINANCE.md §7): the finance screens, root first
+    "/finance",
+    "/finance/currency",
+    "/finance/expenses",
+    "/finance/income",
+    "/finance/scenarios",
+    "/finance/services",
+    "/finance/subscriptions",
     "/",
 )
 ALLOWED_HREF = re.compile(
@@ -50,7 +58,7 @@ ALLOWED_HREF = re.compile(
     + r")"
     r"("
     r"/[0-9a-fA-F-]{8,}"  # only projects take an id in the path
-    r"|\?(task|note|contact|q|filter)=[^?&#]+"
+    r"|\?(task|note|contact|q|filter|expense|category|income|sub|service|scenario|pair)=[^?&#]+"
     r")?$"
 )
 
@@ -145,6 +153,46 @@ def test_route_constants_are_canonical() -> None:
     ]
     for page in pages:
         assert not page.startswith("/os")
+
+
+def test_finance_entities_link_to_their_own_screens() -> None:
+    """§7: each finance entity type opens the screen that lists it, with the row selected."""
+    assert links.href_for("expense", "e-1") == "/finance/expenses?expense=e-1"
+    assert links.href_for("expense_category", "c-1") == "/finance/expenses?category=c-1"
+    assert links.href_for("income", "i-1") == "/finance/income?income=i-1"
+    assert links.href_for("income_transactions", "i-1") == "/finance/income?income=i-1"
+    assert links.href_for("income_profile", "p-1") == "/finance/income"
+    assert links.href_for("subscription", "s-1") == "/finance/subscriptions?sub=s-1"
+    assert links.href_for("subscriptions", "s-1") == "/finance/subscriptions?sub=s-1"
+    assert links.href_for("service", "sv-1") == "/finance/services?service=sv-1"
+    assert links.href_for("service_plan", "sp-1") == "/finance/services"
+    assert links.href_for("scenario", "sc-1") == "/finance/scenarios?scenario=sc-1"
+    assert links.href_for("cost_scenario", "sc-1") == "/finance/scenarios?scenario=sc-1"
+    assert links.href_for("scenario_item", "si-1") == "/finance/scenarios"
+    # a rate row is not a record the currency screen can select, so it opens the tab
+    assert links.href_for("exchange_rate", "r-1") == "/finance/currency"
+    for kind in (
+        "expense",
+        "expense_category",
+        "income",
+        "income_profile",
+        "subscription",
+        "service",
+        "service_plan",
+        "scenario",
+        "scenario_item",
+        "exchange_rate",
+    ):
+        assert_valid_href(links.href_for(kind, "x-1"), f"finance {kind}")
+        assert_valid_href(links.href_for(kind), f"finance {kind} without an id")
+
+
+def test_a_stale_rate_links_to_the_converter_opened_on_that_pair() -> None:
+    """§6 rule 4: the rate notification deep-links to the pair, upper-cased and quoted."""
+    assert links.currency_pair_href("usd", "inr") == "/finance/currency?pair=USDINR"
+    assert links.currency_pair_href("GBP", None) == "/finance/currency?pair=GBP"
+    assert links.currency_pair_href(None, None) == "/finance/currency"
+    assert_valid_href(links.currency_pair_href("INR", "USD"), "currency pair")
 
 
 def test_search_group_href_quotes_the_term() -> None:
@@ -298,7 +346,7 @@ def test_demo_data_hrefs_are_all_valid(client: TestClient) -> None:
             seen += 1
     assert seen > 20, f"only {seen} demo hrefs checked"
 
-    for term in ("atlas", "order", "postgres", "aisha", "northwind", "v1"):
+    for term in ("atlas", "order", "postgres", "aisha", "northwind", "v1", "rent", "kite", "retainer"):
         body = client.get(f"{V1}/search", params={"q": term}).json()
         for group in body["groups"]:
             assert_valid_href(group["href"], f"demo search group {group['type']}")

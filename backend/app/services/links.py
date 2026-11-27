@@ -6,9 +6,11 @@ module instead of a hunt through five services.
 
 MyOS screens are the app's canonical routes: ``/tasks``, ``/notes``, ``/contacts``,
 ``/projects``, ``/goals``, ``/notifications``, ``/activity``, ``/settings``, ``/search``,
-and the dashboard at ``/``.  The legacy prefixed aliases those screens used to live under are
-gone; nothing in this module may bring one back, and ``tests/test_links.py`` fails if any
-emitted href does.
+the Finance screens ``/finance``, ``/finance/income``, ``/finance/currency``,
+``/finance/expenses``, ``/finance/subscriptions``, ``/finance/services``,
+``/finance/scenarios``, and the dashboard at ``/``.  The legacy prefixed aliases those
+screens used to live under are gone; nothing in this module may bring one back, and
+``tests/test_links.py`` fails if any emitted href does.
 
 The rules, all of them enforced by :func:`href_for`:
 
@@ -23,8 +25,9 @@ The rules, all of them enforced by :func:`href_for`:
   every call site, so it cannot be forgotten;
 * an entity type we do not know yields ``None`` - no link is better than a wrong one.
 
-The full target set is written down in docs/MYOS/DATA_MODEL.md ("Deep links"); anything
-outside it is a bug in this module.
+The full target set is written down in docs/MYOS/DATA_MODEL.md ("Deep links") and, for the
+finance records, docs/MYOS/PHASE3_FINANCE.md §7; anything outside them is a bug in this
+module.
 """
 
 from __future__ import annotations
@@ -42,6 +45,15 @@ SEARCH: Final = "/search"
 SETTINGS: Final = "/settings"
 TASKS: Final = "/tasks"
 
+#: the Finance screens (PHASE3_FINANCE.md §1); `/finance` is the module root
+FINANCE: Final = "/finance"
+FINANCE_CURRENCY: Final = f"{FINANCE}/currency"
+FINANCE_EXPENSES: Final = f"{FINANCE}/expenses"
+FINANCE_INCOME: Final = f"{FINANCE}/income"
+FINANCE_SCENARIOS: Final = f"{FINANCE}/scenarios"
+FINANCE_SERVICES: Final = f"{FINANCE}/services"
+FINANCE_SUBSCRIPTIONS: Final = f"{FINANCE}/subscriptions"
+
 #: saved views of the task list (``/tasks?filter=overdue`` is the shape the UI knows)
 TASKS_OVERDUE: Final = f"{TASKS}?filter=overdue"
 TASKS_DUE_TODAY: Final = f"{TASKS}?filter=today"
@@ -53,12 +65,23 @@ _LINKS: Final[dict[str, tuple[str, str | None]]] = {
     "activity": (ACTIVITY, None),
     "company": (CONTACTS, None),
     "contact": (CONTACTS, "contact"),
+    "cost_scenario": (FINANCE_SCENARIOS, "scenario"),
+    "expense": (FINANCE_EXPENSES, "expense"),
+    "expense_category": (FINANCE_EXPENSES, "category"),
+    "exchange_rate": (FINANCE_CURRENCY, None),
     "goal": (GOALS, None),
+    "income": (FINANCE_INCOME, "income"),
+    "income_profile": (FINANCE_INCOME, None),
     "milestone": (PROJECTS, None),
     "note": (NOTES, "note"),
     "notification": (NOTIFICATIONS, None),
     "project": (PROJECTS, None),
     "reminder": (NOTIFICATIONS, None),
+    "scenario": (FINANCE_SCENARIOS, "scenario"),
+    "scenario_item": (FINANCE_SCENARIOS, None),
+    "service": (FINANCE_SERVICES, "service"),
+    "service_plan": (FINANCE_SERVICES, None),
+    "subscription": (FINANCE_SUBSCRIPTIONS, "sub"),
     "task": (TASKS, "task"),
     "workspace": (SETTINGS, None),
 }
@@ -67,12 +90,20 @@ _LINKS: Final[dict[str, tuple[str, str | None]]] = {
 _ALIASES: Final[dict[str, str]] = {
     "companies": "company",
     "contacts": "contact",
+    "cost_scenario_items": "scenario_item",
+    "cost_scenarios": "scenario",
+    "expense_categories": "expense_category",
+    "expenses": "expense",
     "goals": "goal",
+    "income_profiles": "income_profile",
+    "income_transactions": "income",
     "milestones": "milestone",
     "notes": "note",
     "notifications": "notification",
     "projects": "project",
     "reminders": "reminder",
+    "services": "service",
+    "subscriptions": "subscription",
     "tasks": "task",
     "users": "workspace",
     "workspaces": "workspace",
@@ -88,6 +119,9 @@ _SEARCH_PAGES: Final[dict[str, str]] = {
     "milestones": PROJECTS,
     "contacts": CONTACTS,
     "companies": CONTACTS,
+    "expenses": FINANCE_EXPENSES,
+    "subscriptions": FINANCE_SUBSCRIPTIONS,
+    "services": FINANCE_SERVICES,
 }
 
 
@@ -138,3 +172,13 @@ def search_href(group: str, query: str) -> str:
     key = str(group).strip().lower()
     page = _SEARCH_PAGES.get(key, group)
     return f"{page}?q={quote((query or '').strip(), safe='')}"
+
+
+def currency_pair_href(base: str | None, other: str | None) -> str:
+    """``/finance/currency?pair=USDINR`` - the converter opened on one pair (§6).
+
+    A pair with no code behind it is still the converter, so an incomplete row never
+    produces ``?pair=None``.
+    """
+    pair = f"{_id(base) or ''}{_id(other) or ''}".upper()
+    return f"{FINANCE_CURRENCY}?pair={quote(pair, safe='')}" if pair else FINANCE_CURRENCY

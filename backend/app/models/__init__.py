@@ -18,6 +18,18 @@ from app.models.base import (
     range_check,
 )
 from app.models.contacts import Company, Contact
+from app.models.finance import (
+    CostScenario,
+    CostScenarioItem,
+    Expense,
+    ExpenseCategory,
+    ExchangeRate,
+    IncomeProfile,
+    IncomeTransaction,
+    Service,
+    ServicePlan,
+    Subscription,
+)
 from app.models.goals import Goal
 from app.models.notes import Note, NoteRelation
 from app.models.notifications import Notification
@@ -52,6 +64,17 @@ __all__ = [
     "Reminder",
     "Notification",
     "ActivityLog",
+    # finance (Phase 3)
+    "IncomeProfile",
+    "ExchangeRate",
+    "Service",
+    "ServicePlan",
+    "Subscription",
+    "ExpenseCategory",
+    "Expense",
+    "IncomeTransaction",
+    "CostScenario",
+    "CostScenarioItem",
     # building blocks
     "ID_COLUMN",
     "TimestampMixin",
@@ -82,5 +105,15 @@ TABLE_MODELS: dict[str, type] = {
         Reminder,
         Notification,
         ActivityLog,
+        IncomeProfile,
+        ExchangeRate,
+        Service,
+        ServicePlan,
+        Subscription,
+        ExpenseCategory,
+        Expense,
+        IncomeTransaction,
+        CostScenario,
+        CostScenarioItem,
     )
 }

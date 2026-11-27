@@ -20,10 +20,10 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
 from app.core.utils import excerpt
-from app.models import Company, Contact, Milestone, Note, Project, Task
+from app.models import Company, Contact, Expense, Milestone, Note, Project, Service, Subscription, Task
 from app.models.enums import TaskStatus
 from app.schemas.results import SEARCH_GROUP_LABELS, SEARCH_GROUP_ORDER
-from app.services import crud, links
+from app.services import crud, links, money
 
 #: group -> (model, columns searched).  The route each group links to is not here: it is
 #: ``links.search_href(group, term)`` for the header and ``links.href_for(...)`` per item.
@@ -34,6 +34,10 @@ _SEARCH_MODELS: dict[str, tuple[type, tuple[Any, ...]]] = {
     "milestones": (Milestone, (Milestone.title, Milestone.description)),
     "contacts": (Contact, (Contact.name, Contact.title, Contact.notes)),
     "companies": (Company, (Company.name, Company.industry, Company.notes)),
+    # Phase 3 (PHASE3_FINANCE.md §4): the money rows join the palette
+    "expenses": (Expense, (Expense.label, Expense.vendor, Expense.invoice_number, Expense.notes)),
+    "subscriptions": (Subscription, (Subscription.invoice_number, Subscription.notes)),
+    "services": (Service, (Service.name, Service.code, Service.description)),
 }
 
 RANK_EXACT = 0
@@ -124,13 +128,45 @@ def _candidate(group: str, row: Any, today: dt.date | None) -> Candidate | None:
             href=links.href_for("contact", row.id),
             badge=row.kind,
         )
-    return Candidate(
-        id=row.id,
-        title=row.name,
-        subtitle=row.industry,
-        href=links.href_for("company", row.id),
-        badge=None,
-    )
+    if group == "companies":
+        return Candidate(
+            id=row.id,
+            title=row.name,
+            subtitle=row.industry,
+            href=links.href_for("company", row.id),
+            badge=None,
+        )
+    if group == "expenses":
+        parts = [f"{money.money(row.amount, row.currency)} {row.currency}", row.vendor]
+        return Candidate(
+            id=row.id,
+            title=row.label,
+            subtitle=" · ".join(str(part) for part in parts if part),
+            href=links.href_for("expense", row.id),
+            badge=row.paid_on.isoformat(),
+        )
+    if group == "subscriptions":
+        parts = [
+            f"{money.money(row.price, row.currency)} {row.currency}",
+            row.interval,
+            row.plan.name if row.plan else None,
+        ]
+        return Candidate(
+            id=row.id,
+            title=money.subscription_label(row),
+            subtitle=" · ".join(str(part) for part in parts if part),
+            href=links.href_for("subscription", row.id),
+            badge=row.status,
+        )
+    if group == "services":
+        return Candidate(
+            id=row.id,
+            title=row.name,
+            subtitle=row.description or row.code,
+            href=links.href_for("service", row.id),
+            badge=row.unit,
+        )
+    return None
 
 
 def search(

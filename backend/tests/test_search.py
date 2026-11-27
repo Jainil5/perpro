@@ -8,7 +8,20 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
-from app.models import Company, Contact, Milestone, Note, Project, Task
+from decimal import Decimal
+
+from app.models import (
+    Company,
+    Contact,
+    Expense,
+    Milestone,
+    Note,
+    Project,
+    Service,
+    Subscription,
+    Task,
+)
+from app.models.enums import ServiceUnit, SubscriptionStatus
 from app.services import search
 from tests.helpers import make_project, make_task, other_workspace
 
@@ -97,12 +110,52 @@ def test_groups_come_back_in_the_documented_order(session: Session, workspace_id
             source="user",
         )
     )
+    # Phase 3 added three more groups, so this test needs money rows to match as well
+    session.add(
+        Service(
+            workspace_id=workspace_id,
+            name="Acme integration",
+            unit=ServiceUnit.HOUR.value,
+            source="user",
+        )
+    )
+    session.add(
+        Subscription(
+            workspace_id=workspace_id,
+            started_on=DAY - dt.timedelta(days=30),
+            price=Decimal("1200.00"),
+            currency="INR",
+            status=SubscriptionStatus.ACTIVE.value,
+            invoice_number="ACME-1",
+            source="user",
+        )
+    )
+    session.add(
+        Expense(
+            workspace_id=workspace_id,
+            label="Acme invoice printing",
+            amount=Decimal("450.00"),
+            currency="INR",
+            paid_on=DAY,
+            source="user",
+        )
+    )
     session.flush()
 
     payload = search.search(session, workspace_id, query="acme", today=DAY)
     order = [group["type"] for group in payload["groups"]]
     assert order == list(search.SEARCH_GROUP_ORDER)
-    assert set(order) == {"tasks", "projects", "notes", "milestones", "contacts", "companies"}
+    assert set(order) == {
+        "tasks",
+        "projects",
+        "notes",
+        "milestones",
+        "contacts",
+        "companies",
+        "expenses",
+        "subscriptions",
+        "services",
+    }
     assert payload["total"] == sum(len(group["items"]) for group in payload["groups"])
 
 

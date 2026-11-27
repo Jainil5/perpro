@@ -439,12 +439,17 @@ def test_the_importer_accepts_the_messy_real_world_payload(client: TestClient) -
     # trailing commas are repaired, and the repair is reported
     assert result["warnings"] == ["removed 2 trailing comma(s) from the payload"]
 
-    tasks = client.get(f"{V1}/tasks", params={"sort": "created"}).json()["items"]
-    assert [task["title"] for task in tasks] == ["Enforce user_limit", "Test tenant isolation"]
-    assert tasks[0]["priority"] == "high" and tasks[0]["due_date"] == "2026-11-01"
-    assert tasks[0]["tags"] == ["RLS"]
-    assert "Acceptance:" in tasks[0]["notes"] and "\n\n" in tasks[0]["notes"]
-    assert tasks[1]["priority"] == "medium" and tasks[1]["due_date"] == "2026-11-15"
+    # `sort=created` is `created_at DESC, title`; two rows written inside the same second
+    # tie and fall back to the title, and a row written in the next tick does not - so this
+    # test pins the imported *content* and looks rows up by title rather than by position.
+    tasks = {task["title"]: task for task in client.get(f"{V1}/tasks").json()["items"]}
+    assert set(tasks) == {"Enforce user_limit", "Test tenant isolation"}
+    enforce = tasks["Enforce user_limit"]
+    assert enforce["priority"] == "high" and enforce["due_date"] == "2026-11-01"
+    assert enforce["tags"] == ["RLS"]
+    assert "Acceptance:" in enforce["notes"] and "\n\n" in enforce["notes"]
+    isolated = tasks["Test tenant isolation"]
+    assert isolated["priority"] == "medium" and isolated["due_date"] == "2026-11-15"
 
 
 def test_import_is_idempotent_per_workspace(client: TestClient) -> None:

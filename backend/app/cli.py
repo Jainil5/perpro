@@ -29,6 +29,7 @@ from typing import Any
 from app.core.config import APP_VERSION, get_settings
 from app.core.db import dispose_engines, init_db, session_scope
 from app.core.json import dumps
+from app.core.utils import today_utc
 from app.models.enums import ENUMS
 from app.services import context, demo, export, notifications
 
@@ -137,7 +138,7 @@ def cmd_export(args: argparse.Namespace) -> int:
         payload = export.export_payload(session)
     destination = Path(args.path).expanduser()
     if destination.is_dir():
-        destination = destination / f"myos-export-{dt.date.today().isoformat()}.json"
+        destination = destination / f"myos-export-{today_utc().isoformat()}.json"
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(dumps(payload), encoding="utf-8")
     rows = sum(len(table) for table in payload["tables"].values())

@@ -10,7 +10,8 @@ from app.schemas.projects import MilestoneOut, ProjectOut
 from app.schemas.signals import ActivityOut, NotificationOut, ReminderOut
 from app.schemas.tasks import TaskOut
 
-#: group keys, in the order /search renders them
+#: group keys, in the order /search renders them (Phase 3 appends the finance groups,
+#: PHASE3_FINANCE.md §4 - the Phase 1 order is unchanged)
 SEARCH_GROUP_ORDER: tuple[str, ...] = (
     "tasks",
     "projects",
@@ -18,6 +19,9 @@ SEARCH_GROUP_ORDER: tuple[str, ...] = (
     "milestones",
     "contacts",
     "companies",
+    "expenses",
+    "subscriptions",
+    "services",
 )
 
 SEARCH_GROUP_LABELS: dict[str, str] = {
@@ -27,6 +31,9 @@ SEARCH_GROUP_LABELS: dict[str, str] = {
     "milestones": "Milestones",
     "contacts": "Contacts",
     "companies": "Companies",
+    "expenses": "Expenses",
+    "subscriptions": "Subscriptions",
+    "services": "Services",
 }
 
 

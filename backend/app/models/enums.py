@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from enum import StrEnum
 
+from app.core.currencies import CODES as CURRENCY_CODES
+
 
 class ProjectStatus(StrEnum):
     BACKLOG = "backlog"
@@ -82,6 +84,11 @@ class NotificationKind(StrEnum):
     REMINDER = "reminder"
     PROJECT_STALLED = "project_stalled"
     SYSTEM = "system"
+    # Phase 3 — Finance (PHASE3_FINANCE.md §6)
+    SUBSCRIPTION_RENEWING = "subscription_renewing"
+    EXPENSE_RECURRING_DUE = "expense_recurring_due"
+    INCOME_OVERDUE = "income_overdue"
+    RATE_STALE = "rate_stale"
 
 
 class Severity(StrEnum):
@@ -132,6 +139,115 @@ class MemberRole(StrEnum):
     VIEWER = "viewer"
 
 
+# --- Phase 3: Finance (PHASE3_FINANCE.md §5) ------------------------------------
+# Values are the documented set and nothing else; the dotted ``ENUMS`` keys below
+# are what /meta serves and what the ``Choice`` schemas bind to.
+
+
+class IncomeKind(StrEnum):
+    SALARY = "salary"
+    FREELANCE = "freelance"
+    CONTRACT = "contract"
+    BUSINESS = "business"
+    MIXED = "mixed"
+
+
+class TaxRegime(StrEnum):
+    NONE = "none"
+    FLAT = "flat"
+    SLAB = "slab"
+    PRESUMPTIVE = "presumptive"
+
+
+class ServiceUnit(StrEnum):
+    HOUR = "hour"
+    DAY = "day"
+    FIXED = "fixed"
+    RETAINER = "retainer"
+    SEAT = "seat"
+
+
+class PlanInterval(StrEnum):
+    MONTHLY = "monthly"
+    QUARTERLY = "quarterly"
+    YEARLY = "yearly"
+    ONE_TIME = "one_time"
+
+    @classmethod
+    def recurring(cls) -> tuple[str, ...]:
+        """Intervals that have a monthly equivalent — ``one_time`` does not (§3)."""
+        return (cls.MONTHLY, cls.QUARTERLY, cls.YEARLY)
+
+
+class SubscriptionStatus(StrEnum):
+    TRIALING = "trialing"
+    ACTIVE = "active"
+    PAUSED = "paused"
+    CANCELLED = "cancelled"
+    EXPIRED = "expired"
+
+    @classmethod
+    def live(cls) -> frozenset[str]:
+        """Statuses that still bill: a paused/cancelled/expired row renews for nobody."""
+        return frozenset({cls.TRIALING, cls.ACTIVE})
+
+
+class ExpenseCategoryKind(StrEnum):
+    FIXED = "fixed"
+    VARIABLE = "variable"
+    ONE_OFF = "one_off"
+    TAX = "tax"
+
+
+class ExpenseRecurrence(StrEnum):
+    """Same spirit as ``task.recurrence``, its own value set (no daily/fortnightly bills)."""
+
+    NONE = "none"
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
+    QUARTERLY = "quarterly"
+    YEARLY = "yearly"
+
+
+class IncomeStatus(StrEnum):
+    EXPECTED = "expected"
+    INVOICED = "invoiced"
+    PAID = "paid"
+    OVERDUE = "overdue"
+    WRITTEN_OFF = "written_off"
+
+    @classmethod
+    def receivable(cls) -> frozenset[str]:
+        """Money owed but not lost: invoiced or overdue."""
+        return frozenset({cls.INVOICED, cls.OVERDUE})
+
+
+class IncomeMethod(StrEnum):
+    BANK = "bank"
+    CARD = "card"
+    UPI = "upi"
+    CASH = "cash"
+    CRYPTO = "crypto"
+    OTHER = "other"
+
+
+class ScenarioKind(StrEnum):
+    PERSONAL = "personal"
+    BUSINESS = "business"
+    HYBRID = "hybrid"
+
+
+class ScenarioStatus(StrEnum):
+    DRAFT = "draft"
+    ACTIVE = "active"
+    ARCHIVED = "archived"
+
+
+class ScenarioDirection(StrEnum):
+    INCOME = "income"
+    COST = "cost"
+
+
 class Source(StrEnum):
     """Where a row came from. ``demo`` rows are the only ones /demo/reset wipes."""
 
@@ -179,6 +295,27 @@ ENUMS: dict[str, list[str]] = {
     "source": [e.value for e in Source],
     "note_relation.target_type": [e.value for e in RelationType],
     "task_dependency.type": [e.value for e in DependencyType],
+    # Phase 3 — Finance
+    "income.kind": [e.value for e in IncomeKind],
+    "tax.regime": [e.value for e in TaxRegime],
+    "service.unit": [e.value for e in ServiceUnit],
+    "plan.interval": [e.value for e in PlanInterval],
+    "subscription.status": [e.value for e in SubscriptionStatus],
+    "expense.category.kind": [e.value for e in ExpenseCategoryKind],
+    "expense.recurrence": [e.value for e in ExpenseRecurrence],
+    "income.status": [e.value for e in IncomeStatus],
+    "income.method": [e.value for e in IncomeMethod],
+    "scenario.kind": [e.value for e in ScenarioKind],
+    "scenario.status": [e.value for e in ScenarioStatus],
+    "scenario.item.direction": [e.value for e in ScenarioDirection],
+    # §13 gives this column no CHECK either, so the enforced set is declared here:
+    # an item's cadence is an expense recurrence plus `one_time` (services/scenarios.py)
+    "scenario.item.recurrence": [
+        *[e.value for e in ExpenseRecurrence],
+        PlanInterval.ONE_TIME.value,
+    ],
+    # served for form dropdowns; validated in the service, never a CHECK (§5)
+    "currency.code": list(CURRENCY_CODES),
 }
 
 

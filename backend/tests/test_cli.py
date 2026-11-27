@@ -27,8 +27,8 @@ from app.models import Notification, Project, Task, Workspace, WorkspaceMember
 from app.services import context
 from tests.helpers import clock_day, make_project, make_task
 
-#: ``alembic upgrade head`` leaves exactly this revision behind
-HEAD = "0002"
+#: ``alembic upgrade head`` leaves exactly this revision behind (0003 = Phase 3 finance)
+HEAD = "0003"
 
 
 @pytest.fixture
@@ -193,7 +193,13 @@ def test_seed_prints_counts_then_skips(run) -> None:
     created = json.loads(out.removeprefix("seeded: ").strip())
     assert created["projects"] == 8 and created["tasks"] == 49
     assert created["milestones"] == 10 and created["notes"] == 12
-    assert created["notifications"] == 8 and created["activity_logs"] == 17
+    # Phase 3: 4 more activity rows (one per finance mutation the demo makes) and the
+    # five §6 finance notifications - the recurring-expense count can be 12 or 13
+    # depending on where the day-of-month lands, so the total is a floor, not a pin.
+    assert created["activity_logs"] == 21
+    assert created["notifications"] >= 12
+    assert created["expenses"] == 15 and created["income_transactions"] == 11
+    assert created["subscriptions"] == 5 and created["services"] == 4
 
     code, out, _ = run(["seed"])
     assert code == 0
@@ -303,7 +309,7 @@ def test_export_writes_the_documented_dump(run, tmp_path: Path) -> None:
     code, out, _ = run(["export", str(destination)])
     assert code == 0
     assert out.startswith(f"wrote {destination} (")
-    assert out.strip().endswith("rows across 19 tables)")
+    assert out.strip().endswith("rows across 29 tables)")
 
     body = json.loads(destination.read_text(encoding="utf-8"))
     assert set(body) == {"exported_at", "workspace", "tables"}
@@ -322,7 +328,7 @@ def test_export_creates_missing_directories_and_accepts_one(run, tmp_path: Path)
     code, out, _ = run(["export", str(directory)])
     assert code == 0
     written = sorted(path.name for path in directory.glob("*.json"))
-    assert written == [f"myos-export-{dt.date.today().isoformat()}.json"]
+    assert written == [f"myos-export-{clock_day().isoformat()}.json"]
 
 
 def test_cli_export_matches_get_export(run, tmp_path: Path) -> None:

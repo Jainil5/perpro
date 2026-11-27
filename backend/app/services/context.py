@@ -17,12 +17,17 @@ from app.models import (
     ActivityLog,
     Company,
     Contact,
+    CostScenario,
+    Expense,
     Goal,
+    IncomeTransaction,
     Milestone,
     Note,
     Notification,
     Project,
     Reminder,
+    Service,
+    Subscription,
     Tag,
     Task,
     User,
@@ -129,6 +134,12 @@ def workspace_counts(session: Session, workspace_id: str, *, today=None) -> dict
         "reminders": _count(session, Reminder, workspace_id),
         "notifications": _count(session, Notification, workspace_id),
         "activity": _count(session, ActivityLog, workspace_id),
+        # Phase 3 (PHASE3_FINANCE.md §4): one key per finance table the screens list
+        "expenses": _count(session, Expense, workspace_id),
+        "income": _count(session, IncomeTransaction, workspace_id),
+        "subscriptions": _count(session, Subscription, workspace_id),
+        "services": _count(session, Service, workspace_id),
+        "scenarios": _count(session, CostScenario, workspace_id),
     }
 
 

@@ -16,13 +16,18 @@ ID_COLUMN = sa.String(36)
 
 
 class TimestampMixin:
-    """``created_at`` / ``updated_at`` on every table (API.md response rule 3)."""
+    """``created_at`` / ``updated_at`` on every table (API.md response rule 3).
+
+    The defaults call ``now_utc()`` through a lambda rather than passing the function
+    object: a captured reference would outrank the module-level seam it came from, and the
+    test clock (``tests/frozen_clock.py``) replaces that seam, not the object.
+    """
 
     created_at: Mapped[dt.datetime] = mapped_column(
-        sa.DateTime(timezone=True), nullable=False, default=now_utc
+        sa.DateTime(timezone=True), nullable=False, default=lambda: now_utc()
     )
     updated_at: Mapped[dt.datetime] = mapped_column(
-        sa.DateTime(timezone=True), nullable=False, default=now_utc, onupdate=now_utc
+        sa.DateTime(timezone=True), nullable=False, default=lambda: now_utc(), onupdate=lambda: now_utc()
     )
 
 

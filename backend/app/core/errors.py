@@ -6,6 +6,7 @@ Every failure leaves this process as::
 
 with the HTTP status taken from ``_STATUS_CODES``: 404 ``not_found``,
 409 ``conflict``, 422 ``validation_error``, 400 ``bad_request``,
+503 ``not_configured`` (an optional integration that has no environment to run on),
 500 ``internal_error`` (502 ``upstream_unavailable`` is produced by the Next proxy).
 """
 
@@ -23,6 +24,8 @@ CONFLICT = "conflict"
 VALIDATION_ERROR = "validation_error"
 BAD_REQUEST = "bad_request"
 INTERNAL_ERROR = "internal_error"
+#: Phase 3: an optional integration (rate sync) that no environment variable configures
+NOT_CONFIGURED = "not_configured"
 
 #: literal codes - Starlette's ``HTTP_422_UNPROCESSABLE_ENTITY`` alias is deprecated
 HTTP_400 = 400
@@ -31,12 +34,14 @@ HTTP_405 = 405
 HTTP_409 = 409
 HTTP_422 = 422
 HTTP_500 = 500
+HTTP_503 = 503
 
 _STATUS_CODES: dict[str, int] = {
     NOT_FOUND: HTTP_404,
     CONFLICT: HTTP_409,
     VALIDATION_ERROR: HTTP_422,
     BAD_REQUEST: HTTP_400,
+    NOT_CONFIGURED: HTTP_503,
     INTERNAL_ERROR: HTTP_500,
 }
 

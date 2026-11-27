@@ -85,7 +85,10 @@ def test_note_list_filters_and_sorts(client: TestClient) -> None:
     assert titles(tag="postgres") == ["Alpha note"]
     assert titles(tag="#Postgres") == ["Alpha note"]
     assert titles(favorite="true") == ["Beta note"]
-    assert titles(favorite="false") == ["Alpha note", "Gamma note"]
+    # the filter is the assertion here, not the order: without a `sort=` the default is
+    # `updated_at desc`, and three notes created in one request are within one tick of
+    # each other, so only the title sort may be pinned by position.
+    assert sorted(titles(favorite="false")) == ["Alpha note", "Gamma note"]
     assert titles(q="Gamma") == ["Gamma note"]
     assert titles(project_id=project["id"]) == ["Gamma note"]
     assert titles(sort="title") == ["Alpha note", "Beta note", "Gamma note"]

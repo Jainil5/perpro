@@ -13,7 +13,7 @@ from typing import Any
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
-from app.core.utils import now_utc
+from app.core.utils import now_utc, today_utc
 from app.models import Reminder
 from app.models.enums import ActivityVerb, ReminderStatus, Source
 from app.services import activity, crud, serializers
@@ -48,7 +48,7 @@ def list_reminders(
             )
         )
     elif due == "today":
-        day = today or dt.datetime.now(dt.timezone.utc).date()
+        day = today or today_utc()
         conditions.append(Reminder.due_at.is_not(None))
         conditions.append(Reminder.due_at >= dt.datetime.combine(day, dt.time.min))
         conditions.append(Reminder.due_at <= dt.datetime.combine(day, dt.time.max))

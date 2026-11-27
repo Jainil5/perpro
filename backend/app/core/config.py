@@ -49,6 +49,11 @@ class Settings(BaseSettings):
     ai_base_url: str | None = None
     ai_api_key: str | None = None  # env only, never committed
 
+    # --- Finance (optional by design, same shape as AI) ----------------------
+    #: POST /exchange-rates/sync is the only Finance call that may touch the network.
+    #: Unset by default, so the module is offline-first and answers 503 not_configured.
+    rates_url: str | None = None
+
     # --- behaviour switches --------------------------------------------------
     allow_demo_reset: bool = Field(
         default=False, description="Guard for POST /demo/reset (409 when false)"
