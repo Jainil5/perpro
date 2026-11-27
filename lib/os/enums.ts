@@ -23,7 +23,19 @@ export const CANONICAL_ENUMS: EnumSet = {
     'personal',
     'resource',
   ],
-  notification_kind: ['task_overdue', 'task_due', 'milestone', 'reminder', 'project_stalled', 'system'],
+  notification_kind: [
+    'task_overdue',
+    'task_due',
+    'milestone',
+    'reminder',
+    'project_stalled',
+    'system',
+    // Phase 3 · Finance (docs/MYOS/PHASE3_FINANCE.md §5)
+    'subscription_renewing',
+    'expense_recurring_due',
+    'income_overdue',
+    'rate_stale',
+  ],
   notification_severity: ['info', 'warning', 'critical'],
   activity_verb: ['created', 'updated', 'completed', 'reopened', 'deleted', 'commented', 'moved'],
   goal_status: ['active', 'completed', 'abandoned'],
@@ -32,6 +44,19 @@ export const CANONICAL_ENUMS: EnumSet = {
   contact_kind: ['client', 'prospect', 'partner', 'vendor', 'mentor', 'personal', 'other'],
   note_relation_target_type: ['task', 'note', 'project', 'milestone', 'contact', 'company', 'goal'],
   source: ['user', 'demo', 'import', 'ai'],
+  /* Phase 3 · Finance — the keys §5 of the contract adds to /meta. */
+  income_kind: ['salary', 'freelance', 'contract', 'business', 'mixed'],
+  income_status: ['expected', 'invoiced', 'paid', 'overdue', 'written_off'],
+  income_method: ['bank', 'card', 'upi', 'cash', 'crypto', 'other'],
+  tax_regime: ['none', 'flat', 'slab', 'presumptive'],
+  service_unit: ['hour', 'day', 'fixed', 'retainer', 'seat'],
+  plan_interval: ['monthly', 'quarterly', 'yearly', 'one_time'],
+  subscription_status: ['trialing', 'active', 'paused', 'cancelled', 'expired'],
+  expense_category_kind: ['fixed', 'variable', 'one_off', 'tax'],
+  expense_recurrence: ['none', 'weekly', 'monthly', 'quarterly', 'yearly'],
+  scenario_kind: ['personal', 'business', 'hybrid'],
+  scenario_status: ['draft', 'active', 'archived'],
+  scenario_item_direction: ['income', 'cost'],
 }
 
 /** Kanban columns, in board order. `dropped` is shown in list views only. */

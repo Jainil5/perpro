@@ -157,7 +157,29 @@ function NavGroups({
     >
       {OS_NAV_GROUPS.map((group, i) => (
         <div key={group.title} className={cn(i > 0 && 'mt-6')}>
-          <p className="os-label os-label-faint px-2.5 pb-1.5">{group.title}</p>
+          {group.href ? (
+            // A group with its own overview page: the heading is the link, so the sidebar
+            // keeps exactly the agreed rows and still reaches `/finance`.
+            // Type is written out as utilities rather than `.os-label` — that class carries a
+            // colour and would beat the link state (same trade as NavLink).
+            <Link
+              href={group.href}
+              onClick={onNavigate}
+              aria-current={pathname === group.href ? 'page' : undefined}
+              className={cn(
+                'os-tap-none block rounded-os px-2.5 pb-1.5 text-left transition-colors duration-150',
+                pathname === group.href
+                  ? 'text-foreground'
+                  : 'text-faint hover:text-muted-foreground'
+              )}
+            >
+              <span className="font-os-display text-[11px] font-medium uppercase leading-[1.4] tracking-[0.14em]">
+                {group.title}
+              </span>
+            </Link>
+          ) : (
+            <p className="os-label os-label-faint px-2.5 pb-1.5">{group.title}</p>
+          )}
           <ul className="space-y-0.5">
             {group.items.map((item) => (
               <li key={item.label}>

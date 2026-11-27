@@ -40,6 +40,20 @@ source          : user | demo | import | ai
 member.role     : owner | admin | member | viewer
 note_relation.target_type: task | note | project | milestone | contact | company | goal
 task_dependency.type: finish_to_start | start_to_finish | finish_to_finish | start_to_start
+
+income.kind       : salary | freelance | contract | business | mixed
+income.status     : expected | invoiced | paid | overdue | written_off
+income.method     : bank | card | upi | cash | crypto | other
+tax.regime        : none | flat | slab | presumptive
+service.unit      : hour | day | fixed | retainer | seat
+plan.interval     : monthly | quarterly | yearly | one_time
+subscription.status: trialing | active | paused | cancelled | expired
+expense.category.kind: fixed | variable | one_off | tax
+expense.recurrence : none | weekly | monthly | quarterly | yearly
+scenario.kind     : personal | business | hybrid
+scenario.status   : draft | active | archived
+scenario.item.direction: income | cost
+scenario.item.recurrence: none | weekly | monthly | quarterly | yearly | one_time
 ```
 
 These values are copied from the running `GET /meta`; the served list is authoritative and the
@@ -50,7 +64,8 @@ The canonical list is served, not hardcoded: `GET /meta` returns every enumerati
 under `enums` (keyed exactly as `project.status`, `task.status`, …) plus live row counts in
 `counts` (`projects`, `tasks`, `tasks_open`, `tasks_overdue`, `tasks_due_today`, `tasks_done`,
 `milestones`, `notes`, `contacts`, `companies`, `tags`, `goals`, `reminders`, `notifications`,
-`activity`). The frontend's selects, chips and badges all read from there.
+`activity`, plus the Phase 3 tables `expenses`, `income`, `subscriptions`, `services` and
+`scenarios`). The frontend's selects, chips and badges all read from there.
 
 The frontend must not invent other values; unknown values from the API render as the raw string.
 
@@ -264,16 +279,63 @@ anything, milestones within 7 days, empty-projects (no tasks).
 ### Activity
 * `GET /activity?entity_type=&project_id=&days=7&limit=100` → `{ "items": [activity], "total": n }`
 
+### Finance (Phase 3)
+
+The money surface is specified end to end in
+[PHASE3_FINANCE.md](PHASE3_FINANCE.md) — endpoint by endpoint, with the derivation rules. The
+short version, all under `/api/v1` and reached by the browser as `/api/os/v1/*`:
+
+* `GET /finance/summary?today=&currency=` — the whole overview, derived per request: net, burn,
+  runway, MRR/ARR, receivables, overdue, a 6-month series, category and vendor splits, currency
+  exposure, stale rates and per-module counts. Nothing is stored and nothing is totalled in the
+  browser.
+* `GET|POST /income-profiles`, `POST /income-profiles/preview` — the tax calculator. A profile
+  stores inputs only; every result is previewed.
+* `GET /currencies` — the curated registry (`minor_units` decides rounding).
+* `GET|POST /exchange-rates`, `PATCH|DELETE /exchange-rates/{id}`, `GET /convert`,
+  `POST /exchange-rates/sync` — rates are rows the user owns. `sync` answers 503
+  `not_configured` unless `MYOS_RATES_URL` is set, and it is the only finance call that can touch
+  the network.
+* `GET|POST /services`, `GET /services/{id}`, `GET|POST /service-plans` — what you sell, per unit,
+  with the plans packaged on it. Both lists take `sort=` and `dir=asc|desc`.
+* `GET|POST /subscriptions`, `PATCH|DELETE /subscriptions/{id}`,
+  `POST /subscriptions/{id}/pause|resume|cancel` — recurring revenue from the catalogue, with
+  `monthly_cost`, `annual_cost`, `renews_in_days` and `is_running` derived on read.
+  `?renews=month|week|past` lists only rows that still bill.
+* `GET|POST /expense-categories`, `GET|POST /expenses`, `POST /expenses/bulk`,
+  `GET /expenses/summary`, `GET /expenses/export.csv` and `GET /income/export.csv` — spend, its
+  tree, and CSV generated per request and never written to disk.
+* `GET|POST /income`, `PATCH|DELETE /income/{id}`, `POST /income/{id}/mark-paid`,
+  `GET /income/summary` — expected → invoiced → paid, with overdue counted by the server.
+* `GET|POST /cost-scenarios`, `GET /cost-scenarios/{id}`, `POST /cost-scenarios/{id}/items`,
+  `PATCH|DELETE /cost-scenario-items/{id}`, `POST /cost-scenarios/{id}/duplicate|activate`,
+  `GET /cost-scenarios/{id}/projection`, `GET /cost-scenarios/compare` — a scenario stores only
+  its lines; the curve, totals, break-even month and runway are rebuilt every call.
+
+**The currency rule.** Money never changes code silently. A total across currencies comes back as
+`by_currency: [{currency, income, expense}]` with `currency: null` on the envelope, and every
+figure that would need a rate is `null` — `monthly_burn`, `cash_in_90d` and `runway_months` with
+them, so a null `currency` is always accompanied by null money. `?currency=INR` is the caller
+naming a target: the API then converts through the user's own stored rates and echoes the code back.
+A client that sends no `currency` must be able to render `null` — the frontend shows an em dash plus
+the per-code split, never a guessed number.
+
 ### System / settings
 * `GET /export` → `application/json` full data dump `{ "exported_at", "workspace", "tables": {…} }`
 * `POST /demo/seed` → `{ "created": {…counts…}, "skipped": bool }` — idempotent: if demo rows
-  already exist it does nothing and returns `skipped: true`
+  already exist it does nothing and returns `skipped: true`. The skip is per half: a database
+  seeded before Phase 3 gets its Finance rows backfilled on the same call (`created` then lists
+  only the money tables), so no reset is needed.
 * `POST /demo/reset` → wipes demo-created rows only (`source = 'demo'`) and reseeds. Guarded:
   409 unless `MYOS_ALLOW_DEMO_RESET=1`.
 
 ## Response rules the UI depends on
 
-1. Lists are `{ "items": [...], "total": n }` — always that envelope.
+1. Lists are `{ "items": [...], "total": n }` — always that envelope. Paginated lists also echo
+   `limit` and `offset`, and the six paged Finance lists (`/expenses`, `/income`, `/subscriptions`,
+   `/services`, `/service-plans`, `/exchange-rates`) always do; the unpaginated ones
+   (`/expense-categories`, `/income-profiles`, `/cost-scenarios`, `/currencies`) carry no page
+   fields, so a client must not read `limit` there.
 2. A missing FK target (`project_id` pointing elsewhere) is a `422`, not a silent `null`.
 3. `updated_at` changes on every write, so "recent activity" ordering is stable.
 4. `GET` requests are read-only; they must never create notifications (that happens in
@@ -293,6 +355,8 @@ MyOS is not a sub-app, so nothing may be emitted with the retired `/os/` prefix.
 | milestone | `/projects/<project_id>` |
 | project / goal | `/projects/<id>` / `/goals` |
 | reminder, notification, company, workspace | the list page that shows it (`/notifications`, `/settings`) |
+| expense / income transaction / subscription | `/finance/expenses?expense=<id>`, `/finance/income?income=<id>`, `/finance/subscriptions?sub=<id>` |
+| service / cost scenario / expense category | `/finance/services?service=<id>`, `/finance/scenarios?scenario=<id>`, `/finance/expenses?category=<id>` |
 | cluster filters | `/tasks?filter=overdue`, `/projects?q=<term>` |
 | search group headers | `/tasks?q=…`, `/projects?q=…`, `/notes?q=…`, `/contacts?q=…` |
 

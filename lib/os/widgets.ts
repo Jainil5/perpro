@@ -5,6 +5,7 @@
 
 export type WidgetId =
   | 'insights'
+  | 'money'
   | 'agenda'
   | 'today'
   | 'overdue'
@@ -24,6 +25,7 @@ export interface WidgetDef {
 
 export const WIDGET_DEFS: WidgetDef[] = [
   { id: 'insights', title: 'Insights', hint: 'Rule-based readings of your data', width: 'full' },
+  { id: 'money', title: 'Money', hint: 'Net, runway and what is owed - the same figures /finance derives', width: 'half' },
   { id: 'agenda', title: "Today's agenda", hint: 'Tasks, reminders and milestones dated today', width: 'half' },
   { id: 'today', title: "Today's tasks", hint: 'Tick items off without leaving the dashboard', width: 'half' },
   { id: 'overdue', title: 'Overdue', hint: 'Everything past its due date', width: 'half' },

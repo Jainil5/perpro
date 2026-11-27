@@ -30,7 +30,7 @@ const PHASES: { phase: OsPhase; title: string; summary: string; rows: PhaseRow[]
     summary: 'Job hunting and client work: the two pipelines that need their own state machines.',
     rows: [
       { label: 'Career board', status: 'planned', detail: 'Roles, applications, interviews and offers as one funnel.' },
-      { label: 'Freelance CRM', status: 'planned', detail: 'Lead → proposal → contract → invoice, with follow-up tasks.' },
+      { label: 'Freelance CRM', status: 'planned', detail: 'Lead → proposal → contract → invoice, with follow-up tasks. Phase 3 already ships the invoice, rate and revenue side of it.' },
       {
         label: 'Contacts and companies',
         status: 'live',
@@ -49,16 +49,58 @@ const PHASES: { phase: OsPhase; title: string; summary: string; rows: PhaseRow[]
     title: PHASE_TITLES[3],
     summary: 'Money math on your own numbers, offline first.',
     rows: [
-      { label: 'Income calculator', status: 'planned', detail: 'Gross to take-home, tax and runway from one form.' },
-      { label: 'Currency converter', status: 'planned', detail: 'Rates need a network call, so it ships behind a setting.', needs: 'rates provider' },
-      { label: 'Subscriptions', status: 'planned', detail: 'Recurring spend with renewal reminders fed into /reminders.' },
-      { label: 'Service catalogue', status: 'planned', detail: 'Packages and day rates the CRM can quote from.' },
-      { label: 'Cost scenarios', status: 'planned', detail: 'Compare a plan against a target with the numbers you keep.' },
-      { label: 'Expenses', status: 'planned', detail: 'Logged spend, categories and CSV export.' },
+      {
+        label: 'Finance overview',
+        status: 'live',
+        detail: 'Net, runway, MRR, a 12-month in/out series and per-currency totals — all derived server-side.',
+        needs: 'GET /finance/summary',
+      },
+      {
+        label: 'Income calculator',
+        status: 'live',
+        detail: 'Profiles with slabs, deductions and presumptive tax; take-home, effective rate and runway come back from the API.',
+        needs: 'GET /income-profiles · POST /income-profiles/preview',
+      },
+      {
+        label: 'Income ledger',
+        status: 'live',
+        detail: 'Expected → invoiced → paid, with overdue days counted by the server and a breakdown by service.',
+        needs: 'GET /income/summary · POST /income/{id}/mark-paid',
+      },
+      {
+        label: 'Currency converter',
+        status: 'live',
+        detail: 'Works entirely on stored rate rows, so it answers offline; a sync is an explicit button, never a background call.',
+        needs: 'GET /convert · POST /exchange-rates/sync',
+      },
+      {
+        label: 'Subscriptions',
+        status: 'live',
+        detail: 'Renewal dates normalised from any interval, pause/resume/cancel as real states, and the burn they add.',
+        needs: 'GET /subscriptions · POST /subscriptions/{id}/pause',
+      },
+      {
+        label: 'Service catalogue',
+        status: 'live',
+        detail: 'Units, plans and the revenue each service earned — the detail pane reads one endpoint, so it cannot disagree with itself.',
+        needs: 'GET /services/{id}',
+      },
+      {
+        label: 'Cost scenarios',
+        status: 'live',
+        detail: 'Lines in, curve out: break-even, runway and a two-plan comparison on one month axis, rebuilt on every read.',
+        needs: 'GET /cost-scenarios/{id}/projection · GET /cost-scenarios/compare',
+      },
+      {
+        label: 'Expenses',
+        status: 'live',
+        detail: 'Categories with a tree, recurring lines feeding the burn, top vendors and CSV export.',
+        needs: 'GET /expenses/summary · GET /expenses/export.csv',
+      },
       {
         label: 'Currency field',
         status: 'live',
-        detail: 'The workspace already stores a currency, so Phase 3 formats money correctly from day one.',
+        detail: 'The workspace stores a currency and a timezone, so every money screen formats and derives dates the same way.',
         needs: 'PATCH /workspace',
       },
     ],
@@ -70,7 +112,12 @@ const PHASES: { phase: OsPhase; title: string; summary: string; rows: PhaseRow[]
     rows: [
       { label: 'Google Calendar', status: 'planned', detail: 'Two-way sync with a conflict view; milestones become events.' },
       { label: 'Google Contacts', status: 'planned', detail: 'Import into /contacts with de-dup by email.' },
-      { label: 'Stripe', status: 'planned', detail: 'Payments and subscriptions for the finance modules.' },
+      {
+        label: 'Stripe',
+        status: 'planned',
+        detail: 'Payouts and webhook-driven renewals. The ledger works without it — the connector would only import what already happened.',
+        needs: 'POST /integrations/stripe/webhook',
+      },
       { label: 'Slack', status: 'planned', detail: 'Notifications out, commands in.' },
       { label: 'WhatsApp', status: 'planned', detail: 'Reminder delivery on the channel you actually read.' },
       {
@@ -165,7 +212,11 @@ export default function RoadmapView() {
         ))}
       </div>
 
-      <Panel dense title="What Phase 1 ships" description="The sidebar entries without a phase badge">
+      <Panel
+        dense
+        title="What you can click today"
+        description="Every sidebar entry with a real route. The entries without one are anchored to the phase that builds them, above."
+    >
         <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
           {OS_NAV_GROUPS.flatMap((group) => group.items)
             .filter((item: OsNavItem) => item.href)

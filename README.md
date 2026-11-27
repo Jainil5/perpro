@@ -41,8 +41,8 @@ Or step by step, without make:
 
 ```bash
 cd backend && python3 -m pip install -r requirements.txt
-python3 -m alembic upgrade head     # creates backend/data/myos.db and all 19 Phase-1 tables
-python3 -m app.cli seed             # idempotent demo data (relative dates, always "alive")
+python3 -m alembic upgrade head     # creates backend/data/myos.db and all 29 tables (19 Phase 1 + 10 Finance)
+python3 -m app.cli seed             # idempotent demo data (relative dates, always "alive"); on a database that predates Phase 3 the same call backfills the Finance rows
 python3 -m uvicorn app.main:app --port 8000
 cd .. && npm install && npm run dev -- -p 3002
 ```
@@ -58,7 +58,7 @@ file in a named volume.
 
 | Screen | Route | Store |
 |---|---|---|
-| Personal dashboard — agenda, today's/overdue tasks, active projects with next action, milestones, notifications, recent notes, activity, rule-based insights, reorderable/hideable widgets, quick actions | `/` | MyOS |
+| Personal dashboard — agenda, today's/overdue tasks, active projects with next action, milestones, notifications, recent notes, activity, rule-based insights, a Money tile, reorderable/hideable widgets, quick actions | `/` | MyOS |
 | Projects — filters, progress, create/edit, delete with type-to-confirm | `/projects` | MyOS |
 | Project workspace — next action, kanban (drag) + table, milestones timeline, stats, project activity | `/projects/[id]` | MyOS |
 | Tasks — status/priority/project/tag/due filters, search, sort, list + board, bulk actions, paging, recurring rollover, JSON import | `/tasks` | MyOS |
@@ -70,6 +70,13 @@ file in a named volume.
 | Activity — unified timeline grouped by day | `/activity` | MyOS |
 | Settings — workspace defaults, theme, API health, demo seed/reset, full JSON export, data location | `/settings` | MyOS |
 | Roadmap — what each later phase unlocks | `/roadmap` | MyOS |
+| Finance overview — net, runway, burn, MRR, receivables, renewals, currency exposure, stale rates; a `Read totals in` control names the currency for every figure | `/finance` | MyOS |
+| Income calculator — gross → tax → take-home for `none`/`flat`/`slab`/`presumptive` regimes, two profiles side by side, plus the income ledger (expected → invoiced → paid, overdue days from the server, CSV export of the exact window you are looking at) | `/finance/income` | MyOS |
+| Currency converter — convert at a stored rate, the rate ledger with age and staleness, mixed-currency totals per code, hand-added rates (`sync` is opt-in and offline-safe) | `/finance/currency` | MyOS |
+| Subscriptions — recurring commitments from your own catalogue, renewal dates, monthly/annual normalisation, pause/resume/cancel | `/finance/subscriptions` | MyOS |
+| Service catalogue — what you can sell, the unit it is sold in, the plans packaged on top, revenue earned per service | `/finance/services` | MyOS |
+| Cost scenarios — a plan for the next N months, month-by-month curve, break-even month, runway, duplicate/activate, compare two plans | `/finance/scenarios` | MyOS |
+| Expenses — spend by month/category/vendor, recurring share, bulk actions, CSV export | `/finance/expenses` | MyOS |
 | Inbox — triage captures into tasks, notes or meetings | `/inbox` | Supabase |
 | Meetings — agenda + notes, AI action items | `/meetings` | Supabase |
 | News — AI + football feeds | `/news` | Supabase |
@@ -87,8 +94,8 @@ dialog can copy both the expected JSON shape and a prompt to hand an agent that 
 ### Verification
 
 ```bash
-cd backend && python3 -m pytest -q   # 370 passed — services, API contract, migrations, CLI
-npm test                             # 13 passed — PerPro import + implementation-brief logic
+cd backend && python3 -m pytest -q   # 607 passed — services, API contract, migrations, CLI
+npm test                             # 34 passed — PerPro import + implementation-brief logic
 npm run build                        # the one app type-checks and compiles
 ```
 
@@ -96,7 +103,13 @@ Derived logic that is unit-tested rather than eyeballed: project progress
 (including the `manual_progress` and completed/archived rules), overdue and due-today boundaries,
 recurrence rollover including month-end clamping, the tolerant importer, search ranking and
 grouping, dashboard insight rules, notification dedupe across two refreshes, activity logging,
-the deep-link target set, and the cascade rules on delete.
+the deep-link target set, and the cascade rules on delete. Money gets the same treatment: slab /
+flat / presumptive tax, 0-decimal currencies, half-cent rounding done once, monthly normalisation
+of every interval, runway that returns `null` instead of infinity, a rate lookup that degrades to
+the last known rate, one that refuses an unknown pair, a scenario curve whose totals equal the sum
+of its own months, and the currency rule itself — a mixed book that has not been told which code
+to answer in returns `null` for every figure that would need a rate, never a number whose currency
+nobody named.
 
 ### MyOS docs
 
@@ -107,9 +120,11 @@ the deep-link target set, and the cascade rules on delete.
 values, Postgres mapping, and the Phase 2–6 tables designed but not yet migrated.
 
 AI is optional and off by default (`MYOS_AI_ENABLED=0`); no MyOS screen needs a model to work.
-Phases 2–6 (career pipeline, freelance CRM, finance and cost scenarios, Google/GitHub/Supabase
-integrations, business analytics, AI tool calling) are specified as additive migrations — the
-sidebar shows them as roadmap entries rather than fake screens until they exist.
+Phase 3 — Finance — is in: money math runs on your own rows, offline first, with no paid rate
+service and no bank connection. Phases 2 and 4–6 (career pipeline, freelance CRM,
+Google/GitHub/Supabase integrations, business analytics, AI tool calling) are specified as
+additive migrations — the sidebar shows them as roadmap entries rather than fake screens until
+they exist.
 
 ---
 

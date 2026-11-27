@@ -546,6 +546,12 @@ Money is `NUMERIC(14,2)`, rates are `NUMERIC(18,6)`, always with an explicit `cu
 VARCHAR(8)` on the row; `workspaces.currency` is only the default for new rows. Nothing is ever
 converted silently: a converted figure is stored next to the original, never in place.
 
+**What `0003_phase_3_finance.py` does not create:** `subscriptions.client_id` and
+`income_transactions.client_id` as listed below. Both are FKs to `clients`, a Phase 2 table that
+does not exist yet, so they arrive with Phase 2 in its own migration instead of being
+reverse-engineered later. Every other column, index and CHECK in this section exists as written
+(the full deviation list is `PHASE3_FINANCE.md` §8).
+
 ### `income_profiles`
 One row per profile a scenario can model (`freelance`, `salary`, `mixed`): `id`,
 `workspace_id`, `name VARCHAR(120)` NOT NULL, `kind VARCHAR(24)` CHECK

@@ -55,6 +55,11 @@ export interface OsNavItem {
 
 export interface OsNavGroup {
   title: string
+  /**
+   * Optional landing page for the group itself. `Finance` uses this so the module overview
+   * has a home without inventing a seventh sidebar row and breaking the agreed taxonomy.
+   */
+  href?: string
   items: OsNavItem[]
 }
 
@@ -85,13 +90,14 @@ export const OS_NAV_GROUPS: OsNavGroup[] = [
   },
   {
     title: 'Finance',
+    href: '/finance',
     items: [
-      { label: 'Income Calculator', icon: Calculator, anchor: 'finance', phase: 3, hint: 'Take-home, tax and runway maths' },
-      { label: 'Currency Converter', icon: ArrowLeftRight, anchor: 'finance', phase: 3, hint: 'Live rates and multi-currency totals' },
-      { label: 'Subscriptions', icon: Repeat, anchor: 'finance', phase: 3, hint: 'Recurring spend and renewal dates' },
-      { label: 'Service Catalogue', icon: Boxes, anchor: 'finance', phase: 3, hint: 'Packages, rates and what you sell' },
-      { label: 'Cost Scenarios', icon: TrendingUp, anchor: 'finance', phase: 3, hint: 'Compare plans against targets' },
-      { label: 'Expenses', icon: Receipt, anchor: 'finance', phase: 3, hint: 'Logged spend, categories and exports' },
+      { label: 'Income Calculator', icon: Calculator, href: '/finance/income', anchor: 'finance', phase: 3, hint: 'Take-home, tax and runway maths' },
+      { label: 'Currency Converter', icon: ArrowLeftRight, href: '/finance/currency', anchor: 'finance', phase: 3, hint: 'Live rates and multi-currency totals' },
+      { label: 'Subscriptions', icon: Repeat, href: '/finance/subscriptions', anchor: 'finance', phase: 3, hint: 'Recurring spend and renewal dates' },
+      { label: 'Service Catalogue', icon: Boxes, href: '/finance/services', anchor: 'finance', phase: 3, hint: 'Packages, rates and what you sell' },
+      { label: 'Cost Scenarios', icon: TrendingUp, href: '/finance/scenarios', anchor: 'finance', phase: 3, hint: 'Compare plans against targets' },
+      { label: 'Expenses', icon: Receipt, href: '/finance/expenses', anchor: 'finance', phase: 3, hint: 'Logged spend, categories and exports' },
     ],
   },
   {
@@ -130,8 +136,12 @@ export function roadmapHref(anchor: string): string {
 }
 
 /** Flat list of every shipped destination, used by the command palette. */
-export const OS_PAGE_INDEX: { label: string; href: string; group: string }[] = [
-  ...OS_NAV_GROUPS.flatMap((group) =>
-    group.items.filter((item) => item.href).map((item) => ({ label: item.label, href: item.href!, group: group.title }))
-  ),
-]
+export const OS_PAGE_INDEX: { label: string; href: string; group: string }[] = OS_NAV_GROUPS.flatMap(
+  (group) => [
+    // A group with its own landing page is a destination too, listed first within the group.
+    ...(group.href ? [{ label: `${group.title} Overview`, href: group.href, group: group.title }] : []),
+    ...group.items
+      .filter((item) => item.href)
+      .map((item) => ({ label: item.label, href: item.href!, group: group.title })),
+  ]
+)

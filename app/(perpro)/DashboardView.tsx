@@ -35,6 +35,7 @@ import {
   invalidate,
   useLocalState,
   useResource,
+  useWorkspace,
   useWorkspaceSlug,
 } from '@/lib/os/hooks'
 import {
@@ -46,6 +47,9 @@ import {
   type WidgetId,
   type WidgetPrefs,
 } from '@/lib/os/widgets'
+import { FINANCE_PATHS, type FinanceSummary } from '@/lib/os/finance'
+import { formatMoney, monthLabel, runwayLabel } from '@/lib/os/currency'
+import { Stat } from '@/components/os/ui/stats'
 import type { Dashboard, Milestone, NoteSummary, Reminder, Task } from '@/lib/os/types'
 import { roadmapHref } from '@/lib/os/nav'
 import { Badge } from '@/components/os/ui/badge'
@@ -59,7 +63,7 @@ import { ActivityRows } from '@/components/os/ActivityTimeline'
 import { NotificationRow } from '@/components/os/NotificationRow'
 import { ProjectCard } from '@/components/os/ProjectCard'
 import { TaskList } from '@/components/os/TaskRow'
-import { LoadingCards, ResourceState } from '@/components/os/states'
+import { LoadingCards, ResourceState, SkeletonLines } from '@/components/os/states'
 import { useQuickCreate, type QuickKind } from '@/components/os/QuickCreate'
 
 const QUICK_ACTIONS: { kind: QuickKind; label: string; icon: typeof Plus }[] = [
@@ -323,6 +327,8 @@ function renderWidget(
   switch (id) {
     case 'insights':
       return <InsightsWidget insights={data.insights} />
+    case 'money':
+      return <MoneyWidget today={data.today} />
     case 'agenda':
       return <AgendaWidget data={data} />
     case 'today':
@@ -723,6 +729,12 @@ function widgetMore(id: WidgetId): ReactNode {
           full log
         </Link>
       )
+    case 'money':
+      return (
+        <Link href="/finance" className="text-[11px] text-faint underline-offset-2 hover:text-primary hover:underline">
+          finance
+        </Link>
+      )
     case 'notifications':
       return (
         <Link
@@ -794,3 +806,71 @@ function summaryHeadline(data: Dashboard): string {
   return `Today: ${bits.join(' · ')}`
 }
 
+/**
+ * Money on the personal dashboard. It reads the same `GET /finance/summary` the Finance
+ * overview reads, so the two screens cannot quote different figures: nothing is added in the
+ * browser, and a month whose rows span currencies without one named target comes back with
+ * `currency: null` and is reported that way rather than blended into one number.
+ */
+function MoneyWidget({ today }: { today: string }) {
+  const workspace = useWorkspace()
+  /* Four figures on a dashboard tile have to be comparable, so the widget asks the API to state
+   * the workspace's own currency. Nothing is added or converted here, and a workspace with no
+   * default sends no `currency` at all: a mixed book then comes back unnamed and is printed as
+   * unnamed rather than blended into a number this page invented. */
+  const named = workspace.data?.currency || null
+  const money = useResource<FinanceSummary>(FINANCE_PATHS.summary, {
+    today,
+    currency: named ?? undefined,
+  })
+
+  return (
+    <ResourceState
+      resource={money}
+      skeleton={<SkeletonLines rows={3} />}
+      empty={
+        <p className="text-xs text-muted-foreground">
+          The API answered, but there is no finance summary to read yet.
+        </p>
+      }
+    >
+      {(summary) => {
+        const owed = summary.overdue_income
+        const overdue = owed !== null && owed > 0
+        return (
+          <div className="min-w-0 space-y-3">
+            <div className="grid min-w-0 grid-cols-2 gap-x-5 gap-y-3">
+              <Stat
+                label={`Net for ${monthLabel(summary.month)}`}
+                value={formatMoney(summary.net, summary.currency)}
+                tone={summary.net === null ? 'default' : summary.net >= 0 ? 'success' : 'danger'}
+              />
+              <Stat
+                label="Runway"
+                value={runwayLabel(summary.runway_months, {
+                  named: summary.currency !== null,
+                  burn: summary.monthly_burn,
+                  cash: summary.cash_in_90d,
+                })}
+              />
+              <Stat label="Recurring / mo" value={formatMoney(summary.mrr, summary.currency)} />
+              <Stat
+                label="Owed to you"
+                value={formatMoney(summary.receivables, summary.currency)}
+                tone={overdue ? 'warning' : 'default'}
+              />
+            </div>
+            <p className="os-micro">
+              {summary.currency
+                ? `Every figure named in ${summary.currency}${
+                    named ? ' — your workspace currency' : ''
+                  }`
+                : `This month holds more than one code and no default is set, so no total is named — the split and a currency picker are on the Finance screen`}
+              {overdue ? ` · ${formatMoney(owed, summary.currency)} of it overdue` : ''}
+            </p>
+          </div>
+        )
+      }}
+    </ResourceState>
+  )
+}

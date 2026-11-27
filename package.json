@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --test lib/*.test.ts",
+    "test": "node --test lib/*.test.ts lib/os/*.test.ts",
     "test:api": "cd backend && python3 -m pytest -q",
     "db:migrate": "cd backend && python3 -m alembic upgrade head",
     "db:seed": "cd backend && python3 -m app.cli seed"
